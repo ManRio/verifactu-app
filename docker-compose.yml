@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: verifactu-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: verifactu
+      POSTGRES_USER: verifactu
+      POSTGRES_PASSWORD: verifactu_dev
+    ports:
+      - '55532:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
