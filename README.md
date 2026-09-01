@@ -1,9 +1,9 @@
 # VeriFactu App
 
-Aplicación web de facturación ligera orientada a autónomos, pequeños comercios y pequeñas empresas en España, diseñada con una arquitectura preparada para incorporar los requisitos de **VERI*FACTU**.
+Aplicación web de facturación ligera orientada a autónomos, pequeños comercios y pequeñas empresas en España, diseñada con una arquitectura preparada para incorporar los requisitos de **VERI\*FACTU**.
 
 > **Estado del proyecto:** en desarrollo.
-> La aplicación todavía **no debe considerarse un sistema VERI*FACTU conforme**. La integración y validación completa con las especificaciones técnicas de la AEAT forma parte de fases posteriores del proyecto.
+> La aplicación todavía **no debe considerarse un sistema VERI\*FACTU conforme**. La integración y validación completa con las especificaciones técnicas de la AEAT forma parte de fases posteriores del proyecto.
 
 ---
 
@@ -13,15 +13,15 @@ El objetivo de VeriFactu App es construir una solución de facturación sencilla
 
 El proyecto busca combinar:
 
-* Una interfaz sencilla y moderna.
-* Una API REST estructurada.
-* Persistencia en PostgreSQL.
-* Gestión segura de facturas y numeración.
-* Registros de facturación inmutables.
-* Encadenamiento criptográfico.
-* Generación de QR.
-* Preparación para comunicación con los servicios de la AEAT.
-* Trazabilidad de envíos, errores y correcciones.
+- Una interfaz sencilla y moderna.
+- Una API REST estructurada.
+- Persistencia en PostgreSQL.
+- Gestión segura de facturas y numeración.
+- Registros de facturación inmutables.
+- Encadenamiento criptográfico.
+- Generación de QR.
+- Preparación para comunicación con los servicios de la AEAT.
+- Trazabilidad de envíos, errores y correcciones.
 
 El proyecto se desarrolla también como proyecto de portfolio, prestando especial atención a arquitectura, calidad de código, testing y buenas prácticas.
 
@@ -33,27 +33,27 @@ Actualmente se encuentra implementada la infraestructura inicial del backend y e
 
 ### Implementado
 
-* FastAPI configurado.
-* PostgreSQL 17 mediante Docker.
-* SQLAlchemy 2.
-* Psycopg.
-* Pydantic Settings.
-* Variables de entorno.
-* Alembic configurado.
-* Sistema de migraciones operativo.
-* Modelo `Business`.
-* Migración de la tabla `businesses`.
-* Esquemas Pydantic para creación, actualización y lectura.
-* Patrón Repository.
-* Capa Service.
-* Control de duplicados por identificador fiscal.
-* API REST inicial de empresas.
-* Endpoint de health check.
-* Endpoint de health check de PostgreSQL.
-* Tests de repositorio.
-* Tests de servicio.
-* Fixtures transaccionales para evitar que los tests ensucien la base de datos.
-* Swagger/OpenAPI mediante FastAPI.
+- FastAPI configurado.
+- PostgreSQL 17 mediante Docker.
+- SQLAlchemy 2.
+- Psycopg.
+- Pydantic Settings.
+- Variables de entorno.
+- Alembic configurado.
+- Sistema de migraciones operativo.
+- Modelo `Business`.
+- Migración de la tabla `businesses`.
+- Esquemas Pydantic para creación, actualización y lectura.
+- Patrón Repository.
+- Capa Service.
+- Control de duplicados por identificador fiscal.
+- API REST inicial de empresas.
+- Endpoint de health check.
+- Endpoint de health check de PostgreSQL.
+- Tests de repositorio.
+- Tests de servicio.
+- Fixtures transaccionales para evitar que los tests ensucien la base de datos.
+- Swagger/OpenAPI mediante FastAPI.
 
 ### API implementada
 
@@ -82,24 +82,24 @@ GET de Business inexistente      → 404 Not Found
 
 ### Backend
 
-* Python 3.13
-* FastAPI
-* Uvicorn
-* Pydantic
-* Pydantic Settings
-* SQLAlchemy 2
-* Alembic
-* Psycopg
-* PostgreSQL 17
-* Pytest
-* Ruff
+- Python 3.13
+- FastAPI
+- Uvicorn
+- Pydantic
+- Pydantic Settings
+- SQLAlchemy 2
+- Alembic
+- Psycopg
+- PostgreSQL 17
+- Pytest
+- Ruff
 
 ### Infraestructura
 
-* Docker
-* Docker Compose
-* Git
-* GitHub
+- Docker
+- Docker Compose
+- Git
+- GitHub
 
 ### Frontend previsto
 
@@ -107,16 +107,16 @@ El frontend todavía no se ha iniciado.
 
 Stack previsto:
 
-* React
-* TypeScript
-* Vite
-* Tailwind CSS
+- React
+- TypeScript
+- Vite
+- Tailwind CSS
 
 Podrán incorporarse posteriormente herramientas como:
 
-* TanStack Query
-* React Hook Form
-* Zod
+- TanStack Query
+- React Hook Form
+- Zod
 
 ---
 
@@ -149,32 +149,32 @@ PostgreSQL
 
 Responsable del contrato HTTP:
 
-* recibir requests;
-* validar parámetros;
-* devolver códigos HTTP;
-* convertir errores de negocio en respuestas HTTP.
+- recibir requests;
+- validar parámetros;
+- devolver códigos HTTP;
+- convertir errores de negocio en respuestas HTTP.
 
 ### Service
 
 Responsable de:
 
-* reglas de negocio;
-* coordinación de operaciones;
-* control transaccional;
-* coordinación entre varios repositorios.
+- reglas de negocio;
+- coordinación de operaciones;
+- control transaccional;
+- coordinación entre varios repositorios.
 
 ### Repository
 
 Responsable exclusivamente del acceso a datos:
 
-* consultas;
-* inserciones;
-* modificaciones;
-* acceso mediante SQLAlchemy.
+- consultas;
+- inserciones;
+- modificaciones;
+- acceso mediante SQLAlchemy.
 
 El repositorio no decide cuándo realizar el `commit` de una operación.
 
-Esta separación será especialmente importante cuando se implemente el proceso de facturación y VERI*FACTU, donde varias operaciones deberán ejecutarse dentro de una única transacción.
+Esta separación será especialmente importante cuando se implemente el proceso de facturación y VERI\*FACTU, donde varias operaciones deberán ejecutarse dentro de una única transacción.
 
 ---
 
@@ -236,16 +236,16 @@ verifactu-app/
 
 Actualmente almacena:
 
-* razón social;
-* identificador fiscal;
-* nombre comercial;
-* dirección;
-* código postal;
-* ciudad;
-* provincia;
-* código de país;
-* fecha de creación;
-* fecha de actualización.
+- razón social;
+- identificador fiscal;
+- nombre comercial;
+- dirección;
+- código postal;
+- ciudad;
+- provincia;
+- código de país;
+- fecha de creación;
+- fecha de actualización.
 
 El identificador fiscal (`tax_id`) tiene una restricción de unicidad en PostgreSQL.
 
@@ -269,10 +269,10 @@ Configuración actual del contenedor:
 Database: verifactu
 User:     verifactu
 Host:     localhost
-Port:     55532
+Port:     55732
 ```
 
-El puerto `55532` se utiliza en el host para evitar conflictos con instalaciones locales de PostgreSQL.
+El puerto `55732` se utiliza en el host para evitar conflictos con instalaciones locales de PostgreSQL.
 
 El puerto interno del contenedor sigue siendo:
 
@@ -307,7 +307,7 @@ POSTGRES_DB=verifactu
 POSTGRES_USER=verifactu
 POSTGRES_PASSWORD=change_me
 POSTGRES_HOST=localhost
-POSTGRES_PORT=55532
+POSTGRES_PORT=55732
 ```
 
 Nunca deben almacenarse contraseñas reales, tokens, claves privadas o secretos dentro del repositorio.
@@ -500,21 +500,27 @@ pytest -v
 Estado actual:
 
 ```text
-8 passed
+12 passed
 ```
 
 Los tests cubren actualmente:
 
-* health check de FastAPI;
-* conexión con PostgreSQL;
-* creación de empresas mediante Repository;
-* búsqueda por ID;
-* búsqueda por identificador fiscal;
-* creación mediante Service;
-* consulta mediante Service;
-* rechazo de identificadores fiscales duplicados.
+- health check de FastAPI;
+- conexión con PostgreSQL;
+- creación de empresas mediante Repository;
+- búsqueda por ID;
+- búsqueda por identificador fiscal;
+- creación mediante Service;
+- consulta mediante Service;
+- rechazo de identificadores fiscales duplicados.
+- creación de empresas mediante la API (`201 Created`);
+- consulta de empresas mediante la API (`200 OK`);
+- rechazo de identificadores fiscales duplicados mediante la API (`409 Conflict`);
+- respuesta para empresas inexistentes mediante la API (`404 Not Found`).
 
 Los tests de persistencia utilizan transacciones aisladas que se revierten al terminar cada prueba para evitar contaminar la base de desarrollo.
+
+Los tests de integración de la API utilizan `FastAPI TestClient` y sobrescriben temporalmente la dependencia `get_db` para utilizar la misma sesión aislada de pruebas.
 
 Existe actualmente un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. No bloquea la ejecución de la suite y se abordará en una fase posterior.
 
@@ -553,25 +559,25 @@ Las migraciones autogeneradas deben revisarse antes de aplicarse.
 
 ---
 
-## 🧾 VERI*FACTU
+## 🧾 VERI\*FACTU
 
-La arquitectura está siendo diseñada desde el inicio para soportar posteriormente los requisitos asociados a VERI*FACTU.
+La arquitectura está siendo diseñada desde el inicio para soportar posteriormente los requisitos asociados a VERI\*FACTU.
 
 Entre los elementos previstos se encuentran:
 
-* registros de facturación de alta;
-* registros de anulación;
-* subsanaciones;
-* encadenamiento de registros;
-* huella/hash SHA-256;
-* inmutabilidad de registros;
-* generación de QR;
-* generación de los formatos requeridos;
-* comunicación con los servicios de la AEAT;
-* almacenamiento de respuestas;
-* trazabilidad de envíos;
-* detección de incidencias;
-* verificación de la cadena de registros.
+- registros de facturación de alta;
+- registros de anulación;
+- subsanaciones;
+- encadenamiento de registros;
+- huella/hash SHA-256;
+- inmutabilidad de registros;
+- generación de QR;
+- generación de los formatos requeridos;
+- comunicación con los servicios de la AEAT;
+- almacenamiento de respuestas;
+- trazabilidad de envíos;
+- detección de incidencias;
+- verificación de la cadena de registros.
 
 Los registros de facturación se diseñarán separando:
 
@@ -595,93 +601,93 @@ La implementación definitiva deberá seguir las especificaciones técnicas vige
 
 ### Fase 1 — Infraestructura
 
-* [x] FastAPI
-* [x] PostgreSQL
-* [x] Docker Compose
-* [x] SQLAlchemy
-* [x] Alembic
-* [x] Pydantic Settings
-* [x] Pytest
-* [x] Health checks
+- [x] FastAPI
+- [x] PostgreSQL
+- [x] Docker Compose
+- [x] SQLAlchemy
+- [x] Alembic
+- [x] Pydantic Settings
+- [x] Pytest
+- [x] Health checks
 
 ### Fase 2 — Empresa
 
-* [x] Modelo Business
-* [x] Migración
-* [x] Schemas
-* [x] Repository
-* [x] Service
-* [x] POST Business
-* [x] GET Business
-* [ ] Tests de API
-* [ ] Actualización de Business
-* [ ] Listado
-* [ ] Gestión completa del dominio
+- [x] Modelo Business
+- [x] Migración
+- [x] Schemas
+- [x] Repository
+- [x] Service
+- [x] POST Business
+- [x] GET Business
+- [x] Tests de API
+- [ ] Actualización de Business
+- [ ] Listado
+- [ ] Gestión completa del dominio
 
 ### Fase 3 — Usuarios y autenticación
 
-* [ ] Usuarios
-* [ ] Autenticación
-* [ ] Hash de contraseñas
-* [ ] Autorización
-* [ ] Asociación usuario/empresa
+- [ ] Usuarios
+- [ ] Autenticación
+- [ ] Hash de contraseñas
+- [ ] Autorización
+- [ ] Asociación usuario/empresa
 
 ### Fase 4 — Productos
 
-* [ ] Modelo Product
-* [ ] Impuestos
-* [ ] Precios
-* [ ] CRUD
-* [ ] Tests
+- [ ] Modelo Product
+- [ ] Impuestos
+- [ ] Precios
+- [ ] CRUD
+- [ ] Tests
 
 ### Fase 5 — Clientes
 
-* [ ] Modelo Customer
-* [ ] CRUD
-* [ ] Validaciones fiscales
-* [ ] Tests
+- [ ] Modelo Customer
+- [ ] CRUD
+- [ ] Validaciones fiscales
+- [ ] Tests
 
 ### Fase 6 — Facturación
 
-* [ ] Series
-* [ ] Numeración
-* [ ] Factura completa
-* [ ] Factura simplificada
-* [ ] Líneas de factura
-* [ ] Cálculo de bases e impuestos
-* [ ] Totales
-* [ ] PDF
+- [ ] Series
+- [ ] Numeración
+- [ ] Factura completa
+- [ ] Factura simplificada
+- [ ] Líneas de factura
+- [ ] Cálculo de bases e impuestos
+- [ ] Totales
+- [ ] PDF
 
-### Fase 7 — VERI*FACTU
+### Fase 7 — VERI\*FACTU
 
-* [ ] BillingRecord
-* [ ] ALTA
-* [ ] ANULACIÓN
-* [ ] SUBSANACIÓN
-* [ ] Encadenamiento
-* [ ] SHA-256
-* [ ] Inmutabilidad
-* [ ] QR
-* [ ] Generación de mensajes AEAT
-* [ ] Integración con servicios AEAT
-* [ ] Historial de envíos
-* [ ] Gestión de respuestas
-* [ ] Tests de integridad
-* [ ] Tests de concurrencia
+- [ ] BillingRecord
+- [ ] ALTA
+- [ ] ANULACIÓN
+- [ ] SUBSANACIÓN
+- [ ] Encadenamiento
+- [ ] SHA-256
+- [ ] Inmutabilidad
+- [ ] QR
+- [ ] Generación de mensajes AEAT
+- [ ] Integración con servicios AEAT
+- [ ] Historial de envíos
+- [ ] Gestión de respuestas
+- [ ] Tests de integridad
+- [ ] Tests de concurrencia
 
 ### Fase 8 — Frontend
 
-* [ ] React
-* [ ] TypeScript
-* [ ] Vite
-* [ ] Tailwind CSS
-* [ ] Login
-* [ ] Dashboard
-* [ ] Empresas
-* [ ] Productos
-* [ ] Clientes
-* [ ] Facturas
-* [ ] Estado VERI*FACTU
+- [ ] React
+- [ ] TypeScript
+- [ ] Vite
+- [ ] Tailwind CSS
+- [ ] Login
+- [ ] Dashboard
+- [ ] Empresas
+- [ ] Productos
+- [ ] Clientes
+- [ ] Facturas
+- [ ] Estado VERI\*FACTU
 
 ---
 
@@ -691,13 +697,13 @@ VeriFactu App pretende ser una aplicación de facturación ligera.
 
 No se plantea inicialmente como:
 
-* ERP completo;
-* sistema de contabilidad integral;
-* software de nóminas;
-* sistema de conciliación bancaria;
-* CRM avanzado;
-* sistema de gestión de almacenes múltiples;
-* plataforma de comercio electrónico.
+- ERP completo;
+- sistema de contabilidad integral;
+- software de nóminas;
+- sistema de conciliación bancaria;
+- CRM avanzado;
+- sistema de gestión de almacenes múltiples;
+- plataforma de comercio electrónico.
 
 El objetivo es mantener un producto pequeño, comprensible y mantenible.
 
