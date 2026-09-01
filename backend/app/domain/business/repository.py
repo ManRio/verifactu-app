@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.business.model import Business
-from app.domain.business.schemas import BusinessCreate
+from app.domain.business.schemas import BusinessCreate, BusinessUpdate
 
 class BusinessRepository:
     def __init__(self, db: Session):
@@ -30,3 +30,18 @@ class BusinessRepository:
         )
 
         return self.db.scalar(statement)
+
+    def update(
+            self,
+            business: Business,
+            data: BusinessUpdate,
+    ) -> Business:
+        update_data = data.model_dump(exclude_unset=True)
+
+        for field, value in update_data.items():
+            setattr(business, field, value)
+
+        self.db.flush()
+        self.db.refresh(business)
+
+        return business

@@ -99,3 +99,93 @@ def test_get_nonexistent_business_returns_404(client):
     body = response.json()
 
     assert body["detail"] == "Business not found."
+
+def test_update_business(client):
+    payload = build_business_payload()
+
+    create_response = client.post(
+        "/businesses",
+        json=payload,
+    )
+
+    assert create_response.status_code == 201
+
+    business_id = create_response.json()["id"]
+
+    update_payload = {
+        "legal_name": "Updated Business API SL",
+        "trade_name": "Updated API",
+    }
+
+    response = client.patch(
+        f"/businesses/{business_id}",
+        json=update_payload,
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == business_id
+    assert body["legal_name"] == "Updated Business API SL"
+    assert body["trade_name"] == "Updated API"
+
+    # Los campos no enviados deben conservarse.
+    assert body["tax_id"] == payload["tax_id"]
+    assert body["address"] == payload["address"]
+    assert body["postal_code"] == payload["postal_code"]
+    assert body["city"] == payload["city"]
+    assert body["province"] == payload["province"]
+    assert body["country_code"] == payload["country_code"]
+
+def test_update_nonexistent_business_returns_404(client):
+    update_payload = {
+        "legal_name": "Updated Business API SL",
+    }
+
+    response = client.patch(
+        "/businesses/999999999",
+        json=update_payload,
+    )
+
+    assert response.status_code == 404
+
+    body = response.json()
+
+    assert body["detail"] == "Business not found."
+
+def test_update_business_with_duplicate_tax_id_returns_409(client):
+    first_payload = build_business_payload()
+    second_payload = build_business_payload()
+
+    first_response = client.post(
+        "/businesses",
+        json=first_payload,
+    )
+
+    assert first_response.status_code == 201
+
+    second_response = client.post(
+        "/businesses",
+        json=second_payload,
+    )
+
+    assert second_response.status_code == 201
+
+    second_business_id = second_response.json()["id"]
+
+    update_payload = {
+        "tax_id": first_payload["tax_id"],
+    }
+
+    response = client.patch(
+        f"/businesses/{second_business_id}",
+        json=update_payload,
+    )
+
+    assert response.status_code == 409
+
+    body = response.json()
+
+    assert "detail" in body
+    assert first_payload["tax_id"] in body["detail"]
