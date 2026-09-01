@@ -28,6 +28,7 @@ class BusinessUpdate(BaseModel):
 
 class BusinessRead(BusinessBase):
     id: int
+    is_active: bool
     created_at: datetime
     updated_at: datetime
 

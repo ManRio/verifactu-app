@@ -189,3 +189,116 @@ def test_update_business_with_duplicate_tax_id_returns_409(client):
 
     assert "detail" in body
     assert first_payload["tax_id"] in body["detail"]
+
+def test_list_businesses(client):
+    first_payload = build_business_payload()
+    second_payload = build_business_payload()
+
+    first_response = client.post(
+        "/businesses",
+        json=first_payload,
+    )
+
+    assert first_response.status_code == 201
+
+    second_response = client.post(
+        "/businesses",
+        json=second_payload,
+    )
+
+    assert second_response.status_code == 201
+
+    response = client.get("/businesses")
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert isinstance(body, list)
+
+    business_ids = [
+        business["id"]
+        for business in body
+    ]
+
+    first_business_id = first_response.json()["id"]
+    second_business_id = second_response.json()["id"]
+
+    assert first_business_id in business_ids
+    assert second_business_id in business_ids
+    assert business_ids == sorted(business_ids)
+
+def test_deactivate_business(client):
+    payload = build_business_payload()
+
+    create_response = client.post(
+        "/businesses",
+        json=payload,
+    )
+
+    assert create_response.status_code == 201
+
+    business_id = create_response.json()["id"]
+
+    response = client.patch(
+        f"/businesses/{business_id}/deactivate",
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == business_id
+    assert body["is_active"] is False
+
+def test_deactivate_nonexistent_business_returns_404(client):
+    response = client.patch(
+        "/businesses/999999999/deactivate",
+    )
+
+    assert response.status_code == 404
+
+    body = response.json()
+
+    assert body["detail"] == "Business not found."
+
+def test_activate_business(client):
+    payload = build_business_payload()
+
+    create_response = client.post(
+        "/businesses",
+        json=payload,
+    )
+
+    assert create_response.status_code == 201
+
+    business_id = create_response.json()["id"]
+
+    deactivate_response = client.patch(
+        f"/businesses/{business_id}/deactivate",
+    )
+
+    assert deactivate_response.status_code == 200
+    assert deactivate_response.json()["is_active"] is False
+
+    response = client.patch(
+        f"/businesses/{business_id}/activate",
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == business_id
+    assert body["is_active"] is True
+
+def test_activate_nonexistent_business_returns_404(client):
+    response = client.patch(
+        "/businesses/999999999/activate",
+    )
+
+    assert response.status_code == 404
+
+    body = response.json()
+
+    assert body["detail"] == "Business not found."

@@ -37,6 +37,17 @@ def create_business(
         ) from exc
 
 @router.get(
+        "",
+        response_model=list[BusinessRead],
+)
+def list_businesses(
+    db: Session = Depends(get_db),
+):
+    service = BusinessService(db)
+
+    return service.list_businesses()
+
+@router.get(
     "/{business_id}",
     response_model=BusinessRead,
 )
@@ -82,6 +93,50 @@ def update_business(
         raise HTTPException(
             status_code = status.HTTP_404_NOT_FOUND,
             detail="Business not found."
+        )
+
+    return business
+
+@router.patch(
+    "/{business_id}/deactivate",
+    response_model=BusinessRead,
+)
+def deactivate_business(
+    business_id: int,
+    db: Session = Depends(get_db),
+):
+    service = BusinessService(db)
+
+    business = service.deactivate_business(
+        business_id,
+    )
+
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found.",
+        )
+
+    return business
+
+@router.patch(
+    "/{business_id}/activate",
+    response_model=BusinessRead,
+)
+def activate_business(
+    business_id: int,
+    db: Session = Depends(get_db),
+):
+    service = BusinessService(db)
+
+    business = service.activate_business(
+        business_id,
+    )
+
+    if business is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Business not found.",
         )
 
     return business

@@ -45,3 +45,8 @@ class BusinessRepository:
         self.db.refresh(business)
 
         return business
+
+    def list_all(self) -> list[Business]:
+        statement = select(Business).order_by(Business.id)
+
+        return list(self.db.scalars(statement).all())

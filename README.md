@@ -2,7 +2,7 @@
 
 Aplicación web de facturación ligera orientada a autónomos, pequeños comercios y pequeñas empresas en España, diseñada con una arquitectura preparada para incorporar los requisitos de **VERI\*FACTU**.
 
-> **Estado del proyecto:** en desarrollo.
+> **Estado del proyecto:** en desarrollo.  
 > La aplicación todavía **no debe considerarse un sistema VERI\*FACTU conforme**. La integración y validación completa con las especificaciones técnicas de la AEAT forma parte de fases posteriores del proyecto.
 
 ---
@@ -41,17 +41,20 @@ Actualmente se encuentra implementada la infraestructura inicial del backend y e
 - Variables de entorno.
 - Alembic configurado.
 - Sistema de migraciones operativo.
-- Modelo `Business`.
-- Migración de la tabla `businesses`.
+- Modelo `Business` con ciclo de vida activo/inactivo.
+- Migraciones de la tabla `businesses`.
 - Esquemas Pydantic para creación, actualización y lectura.
 - Patrón Repository.
 - Capa Service.
 - Control de duplicados por identificador fiscal.
-- API REST inicial de empresas.
+- Creación, consulta, listado y actualización de empresas.
+- Activación y desactivación de empresas sin eliminación física.
+- API REST del dominio Business.
 - Endpoint de health check.
 - Endpoint de health check de PostgreSQL.
 - Tests de repositorio.
 - Tests de servicio.
+- Tests de integración de la API.
 - Fixtures transaccionales para evitar que los tests ensucien la base de datos.
 - Swagger/OpenAPI mediante FastAPI.
 
@@ -60,20 +63,29 @@ Actualmente se encuentra implementada la infraestructura inicial del backend y e
 Actualmente están disponibles:
 
 ```text
-GET  /health
-GET  /health/db
+GET   /health
+GET   /health/db
 
-POST /businesses
-GET  /businesses/{business_id}
+POST  /businesses
+GET   /businesses
+GET   /businesses/{business_id}
+PATCH /businesses/{business_id}
+PATCH /businesses/{business_id}/deactivate
+PATCH /businesses/{business_id}/activate
 ```
 
 Comportamiento probado:
 
 ```text
-POST /businesses válido          → 201 Created
-GET /businesses/{id} existente   → 200 OK
-POST con tax_id duplicado        → 409 Conflict
-GET de Business inexistente      → 404 Not Found
+POST /businesses válido                    → 201 Created
+GET /businesses                            → 200 OK
+GET /businesses/{id} existente             → 200 OK
+PATCH /businesses/{id} existente           → 200 OK
+PATCH /businesses/{id}/deactivate          → 200 OK
+PATCH /businesses/{id}/activate            → 200 OK
+POST con tax_id duplicado                  → 409 Conflict
+PATCH con tax_id duplicado                 → 409 Conflict
+Operaciones sobre Business inexistente     → 404 Not Found
 ```
 
 ---
@@ -213,6 +225,7 @@ verifactu-app/
 │   │
 │   ├── tests/
 │   │   ├── conftest.py
+│   │   ├── test_business_api.py
 │   │   ├── test_business_repository.py
 │   │   ├── test_business_service.py
 │   │   └── test_health.py
@@ -244,6 +257,7 @@ Actualmente almacena:
 - ciudad;
 - provincia;
 - código de país;
+- estado activo/inactivo;
 - fecha de creación;
 - fecha de actualización.
 
@@ -254,6 +268,27 @@ Además, la capa de servicio detecta previamente los duplicados y los transforma
 ```text
 HTTP 409 Conflict
 ```
+
+### Ciclo de vida
+
+El ciclo de vida de una empresa se gestiona mediante el campo:
+
+```text
+is_active
+```
+
+Las empresas se crean activas por defecto y pueden desactivarse y reactivarse posteriormente.
+
+La desactivación no elimina físicamente el registro. De esta forma se preserva su identidad y se prepara el dominio para mantener referencias e histórico cuando se incorporen facturas y registros fiscales.
+
+El estado no forma parte de la actualización genérica de `Business`. La activación y desactivación se modelan como operaciones explícitas del dominio:
+
+```text
+deactivate_business()
+activate_business()
+```
+
+Esta estrategia evita utilizar una eliminación física como operación habitual y permitirá conservar en el futuro las relaciones históricas y fiscales asociadas a una empresa.
 
 ---
 
@@ -467,6 +502,20 @@ Si ya existe el identificador fiscal:
 409 Conflict
 ```
 
+### Listar empresas
+
+```http
+GET /businesses
+```
+
+Respuesta:
+
+```text
+200 OK
+```
+
+Las empresas se devuelven actualmente ordenadas por su identificador interno.
+
 ### Consultar empresa
 
 ```http
@@ -485,6 +534,86 @@ Si no existe:
 404 Not Found
 ```
 
+### Actualizar empresa
+
+```http
+PATCH /businesses/{business_id}
+```
+
+Permite realizar actualizaciones parciales de los datos de una empresa.
+
+Si existe:
+
+```text
+200 OK
+```
+
+Si el nuevo `tax_id` pertenece a otra empresa:
+
+```text
+409 Conflict
+```
+
+Si la empresa no existe:
+
+```text
+404 Not Found
+```
+
+El estado `is_active` no se modifica mediante este endpoint. La activación y desactivación disponen de operaciones específicas.
+
+### Desactivar empresa
+
+```http
+PATCH /businesses/{business_id}/deactivate
+```
+
+La empresa permanece almacenada, pero pasa a tener:
+
+```json
+{
+  "is_active": false
+}
+```
+
+Respuesta:
+
+```text
+200 OK
+```
+
+Si la empresa no existe:
+
+```text
+404 Not Found
+```
+
+### Reactivar empresa
+
+```http
+PATCH /businesses/{business_id}/activate
+```
+
+La empresa vuelve a tener:
+
+```json
+{
+  "is_active": true
+}
+```
+
+Respuesta:
+
+```text
+200 OK
+```
+
+Si la empresa no existe:
+
+```text
+404 Not Found
+```
+
 ---
 
 ## 🧪 Testing
@@ -494,13 +623,13 @@ La suite utiliza Pytest.
 Ejecutar todos los tests:
 
 ```powershell
-pytest -v
+pytest -q
 ```
 
 Estado actual:
 
 ```text
-12 passed
+30 passed
 ```
 
 Los tests cubren actualmente:
@@ -510,13 +639,21 @@ Los tests cubren actualmente:
 - creación de empresas mediante Repository;
 - búsqueda por ID;
 - búsqueda por identificador fiscal;
+- actualización parcial mediante Repository;
+- listado mediante Repository;
 - creación mediante Service;
 - consulta mediante Service;
-- rechazo de identificadores fiscales duplicados.
+- actualización mediante Service;
+- listado mediante Service;
+- rechazo de identificadores fiscales duplicados;
+- activación y desactivación mediante Service;
+- comportamiento del Service ante IDs inexistentes;
 - creación de empresas mediante la API (`201 Created`);
-- consulta de empresas mediante la API (`200 OK`);
+- consulta y listado mediante la API (`200 OK`);
+- actualización mediante la API (`200 OK`);
 - rechazo de identificadores fiscales duplicados mediante la API (`409 Conflict`);
-- respuesta para empresas inexistentes mediante la API (`404 Not Found`).
+- activación y desactivación mediante la API (`200 OK`);
+- respuestas `404 Not Found` para empresas inexistentes.
 
 Los tests de persistencia utilizan transacciones aisladas que se revierten al terminar cada prueba para evitar contaminar la base de desarrollo.
 
@@ -535,6 +672,13 @@ Migraciones actuales:
 ```text
 f59baa15a544  initial migration
 4edaea57d404  create businesses table
+e4eb415b0211  add is_active to businesses
+```
+
+La revisión actual de la base de datos es:
+
+```text
+e4eb415b0211 (head)
 ```
 
 Consultar migración actual:
@@ -613,16 +757,19 @@ La implementación definitiva deberá seguir las especificaciones técnicas vige
 ### Fase 2 — Empresa
 
 - [x] Modelo Business
-- [x] Migración
+- [x] Migraciones
 - [x] Schemas
 - [x] Repository
 - [x] Service
 - [x] POST Business
 - [x] GET Business
+- [x] PATCH Business
+- [x] Listado
+- [x] Activación y desactivación
+- [x] Tests de Repository
+- [x] Tests de Service
 - [x] Tests de API
-- [ ] Actualización de Business
-- [ ] Listado
-- [ ] Gestión completa del dominio
+- [x] Gestión del ciclo de vida
 
 ### Fase 3 — Usuarios y autenticación
 
@@ -645,6 +792,7 @@ La implementación definitiva deberá seguir las especificaciones técnicas vige
 - [ ] Modelo Customer
 - [ ] CRUD
 - [ ] Validaciones fiscales
+- [ ] Activación y desactivación
 - [ ] Tests
 
 ### Fase 6 — Facturación

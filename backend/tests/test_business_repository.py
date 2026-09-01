@@ -111,3 +111,38 @@ def test_update_business(db_session):
     assert updated_business.city == "Sevilla"
     assert updated_business.province == "Sevilla"
     assert updated_business.country_code == "ES"
+
+def test_list_all_businesses(db_session):
+    repository = BusinessRepository(db_session)
+
+    first_business = repository.create(
+        BusinessCreate(
+            legal_name="First List Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Primera 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    second_business = repository.create(
+        BusinessCreate(
+            legal_name="Second List Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Segunda 2",
+            postal_code="41002",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    businesses = repository.list_all()
+
+    business_ids = [business.id for business in businesses]
+
+    assert first_business.id in business_ids
+    assert second_business.id in business_ids
+    assert business_ids == sorted(business_ids)

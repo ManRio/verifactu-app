@@ -32,6 +32,7 @@ def test_create_business(db_session: Session):
     assert business.id is not None
     assert business.tax_id == tax_id
     assert business.legal_name == "Empresa Service Test SL"
+    assert business.is_active is True
 
 
 def test_get_business(db_session: Session):
@@ -144,3 +145,109 @@ def test_update_business_with_duplicate_tax_id(db_session):
             second_business.id,
             update_data,
         )
+
+def test_list_businesses(db_session):
+    service = BusinessService(db_session)
+
+    first_business = service.create_business(
+        BusinessCreate(
+            legal_name="First Service List SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Primera 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    second_business = service.create_business(
+        BusinessCreate(
+            legal_name="Second Service List SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Segunda 2",
+            postal_code="41002",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    businesses = service.list_businesses()
+
+    business_ids = [business.id for business in businesses]
+
+    assert first_business.id in business_ids
+    assert second_business.id in business_ids
+    assert business_ids == sorted(business_ids)
+
+def test_deactivate_business(db_session):
+    service = BusinessService(db_session)
+
+    business = service.create_business(
+        BusinessCreate(
+            legal_name="Deactivate Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Desactivar 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    deactivated_business = service.deactivate_business(
+        business.id,
+    )
+
+    assert deactivated_business is not None
+    assert deactivated_business.id == business.id
+    assert deactivated_business.is_active is False
+
+def test_deactivate_nonexistent_business(db_session):
+    service = BusinessService(db_session)
+
+    deactivated_business = service.deactivate_business(
+        999999999,
+    )
+
+    assert deactivated_business is None
+
+def test_activate_business(db_session):
+    service = BusinessService(db_session)
+
+    business = service.create_business(
+        BusinessCreate(
+            legal_name="Activate Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Activar 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    deactivated_business = service.deactivate_business(
+        business.id,
+    )
+
+    assert deactivated_business is not None
+    assert deactivated_business.is_active is False
+
+    activated_business = service.activate_business(
+        business.id,
+    )
+
+    assert activated_business is not None
+    assert activated_business.id == business.id
+    assert activated_business.is_active is True
+
+def test_activate_nonexistent_business(db_session):
+    service = BusinessService(db_session)
+
+    activated_business = service.activate_business(
+        999999999,
+    )
+
+    assert activated_business is None

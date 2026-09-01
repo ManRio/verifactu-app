@@ -61,3 +61,38 @@ class BusinessService:
         self.db.refresh(updated_business)
 
         return updated_business
+
+    def deactivate_business(
+        self,
+        business_id: int,
+    ) -> Business | None:
+        business = self.repository.get_by_id(business_id)
+
+        if business is None:
+            return None
+
+        business.is_active = False
+
+        self.db.commit()
+        self.db.refresh(business)
+
+        return business
+
+    def activate_business(
+        self,
+        business_id: int,
+    ) -> Business | None:
+        business = self.repository.get_by_id(business_id)
+
+        if business is None:
+            return None
+
+        business.is_active = True
+
+        self.db.commit()
+        self.db.refresh(business)
+
+        return business
+
+    def list_businesses(self) -> list[Business]:
+        return self.repository.list_all()
