@@ -13,10 +13,7 @@ DATABASE_URL = URL.create(
     database=settings.postgres_db,
 )
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_pre_ping=True,
-)
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 
 SessionLocal = sessionmaker(
     bind=engine,
@@ -24,12 +21,13 @@ SessionLocal = sessionmaker(
     autocommit=False,
 )
 
+# Register all SQLAlchemy models before mapper configuration.
+import app.db.models  # noqa: E402, F401
+
+
 def get_db():
     db = SessionLocal()
-
     try:
         yield db
     finally:
         db.close()
-
-

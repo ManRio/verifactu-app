@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.routes.business import router as business_router
+from app.api.routes.user import router as user_router
 from app.db.session import get_db
 
 app = FastAPI(
@@ -11,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(business_router)
+app.include_router(user_router)
 
 @app.get("/health")
 def health_check():
