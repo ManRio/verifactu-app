@@ -30,13 +30,22 @@ El proyecto se desarrolla también como proyecto de portfolio, prestando especia
 
 ## 🚧 Estado actual
 
-Actualmente se encuentra implementada la infraestructura base del backend, los dominios **Business** y **User** y la primera fase del sistema de **autenticación mediante JWT**.
+Actualmente se encuentra implementada la infraestructura base del backend, los dominios **Business** y **User** y una primera capa funcional de **autenticación mediante JWT**.
 
-La aplicación permite gestionar empresas y usuarios asociados a ellas. Las contraseñas se almacenan mediante hash Argon2 y nunca se persisten ni se devuelven en texto plano.
+La aplicación permite:
 
-También se encuentra implementado el login mediante email y contraseña. Cuando las credenciales son válidas y tanto el usuario como su empresa están activos, la API genera un access token JWT firmado.
+- gestionar empresas;
+- gestionar usuarios asociados a empresas;
+- almacenar contraseñas mediante Argon2;
+- autenticar mediante email y contraseña;
+- generar access tokens JWT;
+- validar tokens Bearer;
+- identificar al usuario autenticado;
+- comprobar en cada petición autenticada que el usuario sigue activo;
+- comprobar que su empresa sigue activa;
+- consultar la identidad del usuario mediante `/auth/me`.
 
-La identificación del usuario autenticado a partir del Bearer token, la protección de endpoints y las reglas de autorización todavía están pendientes.
+La protección de los endpoints de negocio y las reglas de autorización entre empresas todavía no están implementadas.
 
 ### Implementado
 
@@ -44,87 +53,114 @@ La identificación del usuario autenticado a partir del Bearer token, la protecc
 - PostgreSQL 17 mediante Docker.
 - SQLAlchemy 2.
 - Psycopg.
-- Pydantic y Pydantic Settings.
+- Pydantic.
+- Pydantic Settings.
 - Variables de entorno.
 - Alembic configurado.
 - Sistema de migraciones operativo.
 - Registro centralizado de modelos SQLAlchemy.
 - Patrón Repository.
 - Capa Service.
-- Control transaccional desde la capa Service.
-- Endpoint de health check.
-- Endpoint de health check de PostgreSQL.
+- Control transaccional desde Service.
+- Health check de API.
+- Health check de PostgreSQL.
 - Hash de contraseñas mediante Argon2.
 - Verificación de contraseñas.
 - Autenticación mediante email y contraseña.
-- Generación y validación de JWT mediante PyJWT.
+- Generación de JWT mediante PyJWT.
+- Validación de JWT.
 - Expiración de access tokens.
-- Rechazo de tokens manipulados o expirados.
-- Endpoint de login.
+- Autenticación Bearer mediante `HTTPBearer`.
+- Identificación del usuario autenticado.
+- Validación del usuario contra PostgreSQL.
+- Validación de empresa activa durante autenticación.
+- Revocación funcional de acceso mediante estado activo/inactivo.
+- Endpoint `/auth/login`.
+- Endpoint `/auth/me`.
 - Fixtures transaccionales de testing.
 - Tests de Repository.
 - Tests de Service.
 - Tests de seguridad.
+- Tests de dependencias de autenticación.
 - Tests de integración de API.
 - Swagger/OpenAPI mediante FastAPI.
 
-### Dominio Business
+---
+
+## 🏢 Dominio Business
+
+Actualmente se encuentra implementado:
 
 - Modelo `Business`.
 - Relación `Business → User`.
-- Creación, consulta, listado y actualización.
+- Creación.
+- Consulta.
+- Listado.
+- Actualización parcial.
 - Identificador fiscal único.
 - Detección previa de identificadores fiscales duplicados.
 - Ciclo de vida activo/inactivo.
-- Activación y desactivación sin eliminación física.
+- Activación.
+- Desactivación sin eliminación física.
 - API REST del dominio Business.
 
-### Dominio User
+---
+
+## 👤 Dominio User
+
+Actualmente se encuentra implementado:
 
 - Modelo `User`.
 - Asociación obligatoria con `Business`.
 - Email globalmente único.
 - Validación de direcciones de email.
-- Creación y consulta de usuarios.
-- Actualización parcial de email y nombre.
-- Listado de usuarios por empresa a nivel de Repository/Service.
+- Creación.
+- Consulta.
+- Actualización parcial.
+- Listado por empresa a nivel Repository/Service.
 - Ciclo de vida activo/inactivo.
-- Activación y desactivación sin eliminación física.
-- Validación de empresa existente antes de crear un usuario.
-- Rechazo de creación de usuarios para empresas inactivas.
+- Activación.
+- Desactivación.
+- Validación de empresa existente.
+- Rechazo de creación para empresas inactivas.
 - Detección previa de emails duplicados.
 - Hash seguro de contraseñas mediante Argon2.
 - Verificación de contraseñas.
-- Autenticación mediante email y contraseña.
-- Rechazo de autenticación de usuarios inactivos.
-- Rechazo de autenticación cuando la empresa está inactiva.
+- Autenticación de usuario.
+- Rechazo de usuarios inactivos durante autenticación.
+- Rechazo cuando la empresa está inactiva.
 - API REST del dominio User.
 - Exclusión de `password` y `password_hash` de las respuestas HTTP.
 
-### Autenticación
+---
 
-- Schemas específicos de autenticación.
+## 🔐 Autenticación
+
+Actualmente se encuentra implementado:
+
+- `LoginRequest`.
+- `TokenResponse`.
 - `AuthService`.
-- Login mediante email y contraseña.
-- Access tokens JWT.
-- Firma mediante clave secreta configurable.
-- Algoritmo JWT configurable.
+- `POST /auth/login`.
+- JWT firmado mediante PyJWT.
+- Claims `sub`, `iat` y `exp`.
 - Expiración configurable.
-- Claim `sub` asociado al identificador del usuario.
-- Claims `iat` y `exp`.
-- Validación criptográfica de tokens.
-- Rechazo de tokens manipulados.
-- Rechazo de tokens expirados.
-- Respuesta genérica ante errores de autenticación.
-- Cabecera `WWW-Authenticate: Bearer` en respuestas `401`.
+- `HTTPBearer`.
+- `get_current_user`.
+- `GET /auth/me`.
+- Validación de usuario y empresa en cada petición autenticada.
+- Respuestas `401 Unauthorized` controladas.
 
-### API implementada
+---
+
+## 🌐 API implementada
 
 ```text
 GET   /health
 GET   /health/db
 
 POST  /auth/login
+GET   /auth/me
 
 POST  /businesses
 GET   /businesses
@@ -140,9 +176,15 @@ PATCH /users/{user_id}/deactivate
 PATCH /users/{user_id}/activate
 ```
 
-Actualmente no existe un endpoint global `GET /users`. Los usuarios pertenecen a una empresa y el listado por empresa se expondrá cuando se defina el contrato HTTP adecuado y las reglas de autorización.
+Actualmente no existe un endpoint global:
 
-Los endpoints de Business y User todavía no están protegidos mediante JWT. La autenticación ya permite emitir tokens, pero la identificación del usuario actual y la autorización de acceso a recursos se implementarán en los siguientes pasos.
+```text
+GET /users
+```
+
+Los usuarios pertenecen a una empresa y el listado HTTP por empresa se expondrá cuando se definan las reglas de autorización correspondientes.
+
+Los endpoints de `Business` y `User` todavía no están protegidos mediante JWT.
 
 ---
 
@@ -194,9 +236,9 @@ Podrán incorporarse posteriormente herramientas como:
 
 ## 🏗️ Arquitectura
 
-El backend evita concentrar la lógica de negocio y persistencia en los endpoints de FastAPI.
+El backend evita concentrar lógica de negocio y persistencia en los endpoints de FastAPI.
 
-La arquitectura separa responsabilidades entre distintas capas:
+La arquitectura separa responsabilidades:
 
 ```text
 HTTP Request
@@ -222,10 +264,10 @@ PostgreSQL
 Responsable del contrato HTTP:
 
 - recibir requests;
-- validar los datos de entrada mediante Pydantic;
+- validar datos de entrada;
 - devolver códigos HTTP;
 - transformar errores de negocio en respuestas HTTP;
-- serializar las respuestas públicas de la API.
+- serializar respuestas públicas.
 
 ### Service
 
@@ -233,11 +275,11 @@ Responsable de:
 
 - reglas de negocio;
 - coordinación de operaciones;
-- control de los límites transaccionales;
-- coordinación entre varios repositorios;
-- ejecución de `commit` cuando una operación de negocio finaliza correctamente.
+- control de límites transaccionales;
+- coordinación entre repositorios;
+- ejecución de `commit`.
 
-Por ejemplo, la creación de un usuario coordina actualmente:
+Ejemplo de creación de usuario:
 
 ```text
 UserService
@@ -254,7 +296,7 @@ UserService
    └── commit
 ```
 
-La autenticación se mantiene separada del CRUD de usuarios mediante `AuthService`:
+Ejemplo de autenticación:
 
 ```text
 LoginRequest
@@ -286,9 +328,354 @@ Responsable exclusivamente del acceso a datos:
 - modificaciones;
 - acceso mediante SQLAlchemy.
 
-Los repositories utilizan operaciones como `flush()` y `refresh()`, pero no deciden cuándo realizar el `commit` de una operación de negocio.
+Los repositories utilizan operaciones como:
 
-Esta separación será especialmente importante cuando se implemente el proceso de facturación y VERI\*FACTU, donde varias operaciones deberán ejecutarse dentro de una única transacción.
+```text
+flush()
+refresh()
+```
+
+pero no deciden cuándo realizar el `commit`.
+
+Esto será especialmente importante cuando se implemente el proceso de facturación y VERI\*FACTU, donde varias operaciones deberán formar parte de una única transacción.
+
+---
+
+## 🔐 Arquitectura de autenticación
+
+El flujo de login actual es:
+
+```text
+email + password
+      │
+      ▼
+POST /auth/login
+      │
+      ▼
+AuthService
+      │
+      ▼
+UserService.authenticate_user()
+      │
+      ├── usuario existe
+      ├── contraseña correcta
+      ├── usuario activo
+      └── empresa activa
+      │
+      ▼
+create_access_token()
+      │
+      ▼
+JWT
+      │
+      ├── sub
+      ├── iat
+      └── exp
+```
+
+El flujo de una petición autenticada es:
+
+```text
+Authorization: Bearer <JWT>
+            │
+            ▼
+HTTPBearer
+            │
+            ▼
+get_current_user()
+            │
+            ▼
+decode_access_token()
+            │
+            ▼
+payload["sub"]
+            │
+            ▼
+user_id
+            │
+            ▼
+UserRepository
+            │
+            ├── usuario existe
+            └── usuario activo
+            │
+            ▼
+BusinessRepository
+            │
+            ├── empresa existe
+            └── empresa activa
+            │
+            ▼
+User autenticado
+```
+
+---
+
+## 🔑 JWT
+
+Los access tokens se generan mediante:
+
+```text
+PyJWT
+```
+
+La configuración se obtiene de variables de entorno.
+
+Actualmente los tokens contienen:
+
+```text
+sub
+iat
+exp
+```
+
+### `sub`
+
+El claim:
+
+```text
+sub
+```
+
+contiene el identificador del usuario convertido a `str`.
+
+Se utiliza el identificador interno y no el email porque el ID es estable mientras que el email puede modificarse.
+
+### `iat`
+
+Representa el instante de emisión del token.
+
+### `exp`
+
+Representa el instante de expiración.
+
+Actualmente la duración por defecto es:
+
+```text
+30 minutos
+```
+
+y puede modificarse mediante configuración.
+
+---
+
+## 🛡️ Validación de access tokens
+
+La validación se realiza mediante:
+
+```text
+decode_access_token()
+```
+
+El sistema rechaza:
+
+- tokens con firma inválida;
+- tokens manipulados;
+- tokens expirados;
+- valores `sub` inválidos;
+- usuarios inexistentes;
+- usuarios inactivos;
+- empresas inexistentes;
+- empresas inactivas.
+
+---
+
+## 🔒 Revocación funcional de acceso
+
+Los JWT son stateless y no se almacenan actualmente en la base de datos.
+
+Sin embargo, un token criptográficamente válido no implica automáticamente que siga concediendo acceso.
+
+En cada petición autenticada:
+
+```text
+JWT válido
+   │
+   ▼
+buscar User en PostgreSQL
+   │
+   ▼
+comprobar User.is_active
+   │
+   ▼
+buscar Business
+   │
+   ▼
+comprobar Business.is_active
+```
+
+Por tanto:
+
+```text
+JWT válido ≠ acceso garantizado
+```
+
+Si un usuario es desactivado después de haber obtenido un token, su siguiente petición autenticada devuelve:
+
+```text
+401 Unauthorized
+```
+
+Lo mismo sucede si se desactiva su empresa.
+
+Esto permite revocar funcionalmente el acceso antes de que expire el JWT.
+
+---
+
+## 🔐 Errores de autenticación
+
+La API evita revelar información innecesaria sobre las cuentas.
+
+Durante el login, casos como:
+
+- usuario inexistente;
+- contraseña incorrecta;
+- usuario inactivo;
+- empresa inactiva;
+
+se transforman externamente en:
+
+```text
+401 Unauthorized
+```
+
+con:
+
+```json
+{
+  "detail": "Incorrect email or password"
+}
+```
+
+y:
+
+```text
+WWW-Authenticate: Bearer
+```
+
+Durante la validación de un Bearer token se utiliza:
+
+```json
+{
+  "detail": "Could not validate credentials"
+}
+```
+
+también con:
+
+```text
+WWW-Authenticate: Bearer
+```
+
+---
+
+## 👤 Usuario autenticado
+
+La dependencia:
+
+```text
+get_current_user()
+```
+
+es responsable de identificar al usuario asociado al JWT.
+
+Actualmente valida:
+
+1. existencia de credenciales Bearer;
+2. validez del JWT;
+3. existencia de `sub`;
+4. conversión de `sub` a ID de usuario;
+5. existencia del usuario;
+6. estado activo del usuario;
+7. existencia de su empresa;
+8. estado activo de la empresa.
+
+Si todas las comprobaciones son correctas devuelve el objeto:
+
+```text
+User
+```
+
+que puede ser inyectado posteriormente en endpoints protegidos mediante `Depends`.
+
+---
+
+## 🙋 Endpoint `/auth/me`
+
+El endpoint:
+
+```http
+GET /auth/me
+```
+
+requiere:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+Si la autenticación es correcta devuelve `UserRead`.
+
+Ejemplo conceptual:
+
+```json
+{
+  "id": 1,
+  "business_id": 1,
+  "email": "admin@example.com",
+  "full_name": "Usuario Demo",
+  "is_active": true,
+  "created_at": "...",
+  "updated_at": "..."
+}
+```
+
+Nunca devuelve:
+
+```text
+password
+password_hash
+```
+
+Si el token es inexistente o inválido:
+
+```text
+401 Unauthorized
+```
+
+---
+
+## ⚠️ Autenticación no equivale a autorización
+
+Actualmente la aplicación puede identificar correctamente al usuario autenticado.
+
+Sin embargo, todavía no se han implementado las reglas que determinen:
+
+```text
+qué recursos puede utilizar ese usuario
+```
+
+Por ejemplo, antes de proteger los endpoints existentes será necesario impedir que un usuario perteneciente a:
+
+```text
+Business A
+```
+
+pueda consultar o modificar datos pertenecientes a:
+
+```text
+Business B
+```
+
+Por tanto, el siguiente bloque deberá diseñar explícitamente:
+
+- autorización;
+- aislamiento entre empresas;
+- acceso a recursos propios;
+- reglas de administración;
+- estrategia de registro/bootstrap inicial.
+
+No se protegerán indiscriminadamente los endpoints sin definir primero estas reglas.
 
 ---
 
@@ -309,6 +696,10 @@ verifactu-app/
 │   │
 │   ├── app/
 │   │   ├── api/
+│   │   │   ├── dependencies/
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── auth.py
+│   │   │   │
 │   │   │   └── routes/
 │   │   │       ├── auth.py
 │   │   │       ├── business.py
@@ -346,6 +737,7 @@ verifactu-app/
 │   ├── tests/
 │   │   ├── conftest.py
 │   │   ├── test_auth_api.py
+│   │   ├── test_auth_dependencies.py
 │   │   ├── test_auth_service.py
 │   │   ├── test_business_api.py
 │   │   ├── test_business_repository.py
@@ -389,48 +781,54 @@ Actualmente almacena:
 
 Una empresa puede tener múltiples usuarios asociados.
 
-El identificador fiscal (`tax_id`) tiene una restricción de unicidad en PostgreSQL.
-
-Además, la capa Service detecta previamente los duplicados para poder transformar este caso de negocio en una respuesta controlada:
+La relación es:
 
 ```text
-HTTP 409 Conflict
+Business 1 ─────────── N User
 ```
 
-La restricción de PostgreSQL permanece como última garantía de integridad.
+El identificador fiscal:
+
+```text
+tax_id
+```
+
+tiene una restricción de unicidad en PostgreSQL.
+
+La capa Service también detecta duplicados previamente para transformar el caso en:
+
+```text
+409 Conflict
+```
+
+La restricción de PostgreSQL permanece como garantía final de integridad.
 
 ### Ciclo de vida
 
-El ciclo de vida de una empresa se gestiona mediante:
+El ciclo de vida se gestiona mediante:
 
 ```text
 is_active
 ```
 
-Las empresas se crean activas por defecto y pueden desactivarse y reactivarse posteriormente.
+Las empresas se crean activas y pueden desactivarse y reactivarse.
 
-La desactivación no elimina físicamente el registro. De esta forma se preserva su identidad y se prepara el dominio para mantener referencias e histórico cuando se incorporen facturas y registros fiscales.
+La desactivación no elimina el registro.
 
-El estado no forma parte de la actualización genérica de `Business`. La activación y desactivación se modelan como operaciones explícitas:
+Las operaciones son explícitas:
 
 ```text
 deactivate_business()
 activate_business()
 ```
 
-Esta estrategia evita utilizar una eliminación física como operación habitual y permitirá conservar en el futuro las relaciones históricas y fiscales asociadas a una empresa.
+Esto permitirá mantener posteriormente las referencias históricas y fiscales.
 
 ---
 
 ## 👤 Dominio User
 
-`User` representa a un usuario de la aplicación asociado a una empresa.
-
-La relación actual es:
-
-```text
-Business 1 ─────────── N User
-```
+`User` representa un usuario asociado a una empresa.
 
 Cada usuario pertenece obligatoriamente a una única empresa mediante:
 
@@ -453,23 +851,27 @@ Actualmente almacena:
 
 El email es globalmente único en el MVP.
 
-Esto permite realizar el login utilizando:
+Esto permite utilizar:
 
 ```text
 email + password
 ```
 
-sin necesidad de solicitar también un identificador de empresa.
+como credenciales de autenticación.
 
-Las direcciones se validan mediante Pydantic `EmailStr`.
+Las direcciones se validan mediante:
 
-La unicidad está protegida tanto por PostgreSQL como mediante una comprobación previa en la capa Service.
+```text
+EmailStr
+```
+
+La unicidad está protegida mediante PostgreSQL y mediante comprobación previa en Service.
 
 ### Contraseñas
 
-Las contraseñas en texto plano únicamente forman parte de los datos de entrada durante la creación de usuarios y el proceso de login.
+Las contraseñas en texto plano únicamente se utilizan como datos de entrada.
 
-Antes de persistir un usuario:
+Antes de persistir:
 
 ```text
 password
@@ -487,302 +889,40 @@ La base de datos almacena exclusivamente:
 password_hash
 ```
 
-El hashing se realiza mediante `pwdlib` utilizando la configuración recomendada basada en Argon2.
+Ni `password` ni `password_hash` forman parte de:
 
-Ni `password` ni `password_hash` forman parte de `UserRead`, por lo que no se incluyen en las respuestas HTTP de la API.
+```text
+UserRead
+```
 
 ### Reglas de creación
 
 Antes de crear un usuario, `UserService` comprueba:
 
 1. que la empresa exista;
-2. que la empresa esté activa;
+2. que esté activa;
 3. que el email no esté registrado.
 
-Solo después se genera el hash de la contraseña y se persiste el usuario.
-
-### Autenticación de credenciales
-
-`UserService` incorpora la validación de credenciales mediante:
-
-```text
-authenticate_user()
-```
-
-Durante la autenticación se comprueba:
-
-1. que el usuario exista;
-2. que la contraseña sea válida;
-3. que el usuario esté activo;
-4. que la empresa asociada exista;
-5. que la empresa esté activa.
-
-Un email inexistente y una contraseña incorrecta se tratan como credenciales inválidas, evitando exponer innecesariamente la existencia de cuentas mediante la respuesta HTTP.
+Después genera el hash y persiste el usuario.
 
 ### Ciclo de vida
 
-Al igual que `Business`, `User` utiliza:
+Los usuarios utilizan:
 
 ```text
 is_active
 ```
 
-Los usuarios se crean activos y pueden desactivarse y reactivarse sin eliminar físicamente el registro.
-
-Estas operaciones son explícitas:
+Las operaciones son:
 
 ```text
 deactivate_user()
 activate_user()
 ```
 
-`is_active` no forma parte de `UserUpdate`.
+La contraseña no se modifica mediante `UserUpdate`.
 
-La contraseña tampoco se modifica mediante la actualización genérica. Los cambios de contraseña se implementarán posteriormente como una operación específica ligada al sistema de autenticación.
-
----
-
-## 🔐 Seguridad y autenticación
-
-La primera fase del sistema de autenticación está implementada.
-
-La seguridad de contraseñas y JWT se concentra principalmente en:
-
-```text
-app/core/security.py
-```
-
-Actualmente proporciona:
-
-```text
-hash_password()
-verify_password()
-create_access_token()
-decode_access_token()
-```
-
-### Contraseñas
-
-Las contraseñas se protegen mediante Argon2 utilizando `pwdlib`.
-
-Se garantiza que:
-
-- la contraseña en texto plano no se persiste;
-- el hash no se devuelve mediante la API;
-- la contraseña se verifica contra el hash almacenado durante el login.
-
-### JWT
-
-Los access tokens se generan mediante `PyJWT`.
-
-Actualmente incluyen:
-
-```text
-sub
-iat
-exp
-```
-
-El claim:
-
-```text
-sub
-```
-
-contiene el identificador del usuario convertido a `str`.
-
-Se utiliza el identificador interno y no el email porque el identificador es estable mientras que el email puede modificarse.
-
-La duración del token y los parámetros criptográficos se obtienen de la configuración de la aplicación.
-
-El sistema valida la firma y la expiración al decodificar un token.
-
-Los tokens manipulados o expirados son rechazados.
-
-### Login
-
-El endpoint:
-
-```http
-POST /auth/login
-```
-
-recibe JSON:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "password123"
-}
-```
-
-Si las credenciales son válidas y tanto el usuario como su empresa están activos:
-
-```json
-{
-  "access_token": "<jwt>",
-  "token_type": "bearer"
-}
-```
-
-El access token utiliza el identificador del usuario como `sub`.
-
-Ante un fallo de autenticación se devuelve una respuesta genérica:
-
-```text
-401 Unauthorized
-```
-
-con:
-
-```json
-{
-  "detail": "Incorrect email or password"
-}
-```
-
-y la cabecera:
-
-```text
-WWW-Authenticate: Bearer
-```
-
-La respuesta HTTP no distingue entre:
-
-- usuario inexistente;
-- contraseña incorrecta;
-- usuario inactivo;
-- empresa inexistente;
-- empresa inactiva.
-
-### Implementado
-
-- Hash de contraseñas mediante Argon2.
-- Verificación de contraseñas.
-- No persistencia de contraseñas en texto plano.
-- No exposición de hashes mediante la API.
-- Validación de email.
-- Usuarios activos/inactivos.
-- Autenticación de credenciales.
-- Validación de empresa activa durante el login.
-- Generación de JWT.
-- Firma de JWT.
-- Expiración de access tokens.
-- Claims `sub`, `iat` y `exp`.
-- Validación de JWT.
-- Rechazo de tokens manipulados.
-- Rechazo de tokens expirados.
-- Endpoint de login.
-- Respuestas de autenticación que evitan revelar información innecesaria sobre las cuentas.
-
-### Pendiente
-
-Todavía no están implementados:
-
-- identificación del usuario autenticado mediante Bearer token;
-- `get_current_user`;
-- protección de endpoints;
-- autorización por empresa;
-- aislamiento de recursos entre empresas;
-- roles o permisos;
-- cambio seguro de contraseña;
-- refresh tokens, si posteriormente resultan necesarios.
-
-Por tanto, disponer de login y emisión de JWT **todavía no implica que los endpoints de Business y User estén protegidos**.
-
----
-
-## 🔑 Flujo de autenticación actual
-
-```text
-email + password
-      │
-      ▼
-POST /auth/login
-      │
-      ▼
-AuthService
-      │
-      ▼
-UserService.authenticate_user()
-      │
-      ├── usuario existe
-      ├── contraseña correcta
-      ├── usuario activo
-      └── empresa activa
-      │
-      ▼
-create_access_token()
-      │
-      ▼
-JWT firmado
-      │
-      ├── sub = user.id
-      ├── iat
-      └── exp
-      │
-      ▼
-TokenResponse
-```
-
-El siguiente paso del sistema de autenticación será implementar el flujo inverso para las peticiones protegidas:
-
-```text
-Authorization: Bearer <token>
-            │
-            ▼
-validar y decodificar JWT
-            │
-            ▼
-obtener user_id desde sub
-            │
-            ▼
-consultar usuario
-            │
-            ▼
-validar usuario y empresa
-            │
-            ▼
-usuario autenticado
-```
-
----
-
-## 🗄️ Base de datos
-
-La aplicación utiliza PostgreSQL.
-
-Durante el desarrollo PostgreSQL se ejecuta mediante Docker Compose.
-
-Configuración actual del contenedor:
-
-```text
-Database: verifactu
-User:     verifactu
-Host:     localhost
-Port:     55732
-```
-
-El puerto `55732` se utiliza en el host para evitar conflictos con instalaciones locales de PostgreSQL.
-
-El puerto interno del contenedor sigue siendo:
-
-```text
-5432
-```
-
-Las tablas principales implementadas actualmente son:
-
-```text
-businesses
-users
-```
-
-La relación entre ambas se establece mediante la foreign key:
-
-```text
-users.business_id → businesses.id
-```
+El cambio de contraseña se implementará posteriormente como una operación específica.
 
 ---
 
@@ -796,7 +936,7 @@ El proyecto utiliza:
 .env
 ```
 
-en la raíz del proyecto, excluido mediante `.gitignore`.
+en la raíz del proyecto y excluido mediante `.gitignore`.
 
 Para configurar un entorno nuevo se utiliza:
 
@@ -818,17 +958,55 @@ JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-`JWT_SECRET_KEY` debe sustituirse en el entorno real por una clave aleatoria segura.
+`JWT_SECRET_KEY` debe sustituirse por una clave aleatoria segura.
 
-La clave real utilizada para firmar tokens nunca debe almacenarse en el repositorio.
+Puede generarse mediante:
 
-Nunca deben almacenarse contraseñas reales, tokens, claves privadas u otros secretos dentro de Git.
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Nunca deben almacenarse secretos reales en el repositorio.
+
+---
+
+## 🗄️ Base de datos
+
+La aplicación utiliza PostgreSQL 17 mediante Docker Compose.
+
+Configuración actual:
+
+```text
+Database: verifactu
+User:     verifactu
+Host:     localhost
+Port:     55732
+```
+
+El puerto interno del contenedor es:
+
+```text
+5432
+```
+
+Las tablas implementadas actualmente son:
+
+```text
+businesses
+users
+```
+
+La relación se establece mediante:
+
+```text
+users.business_id → businesses.id
+```
 
 ---
 
 ## ⚙️ Instalación del backend
 
-### 1. Clonar el repositorio
+### 1. Clonar
 
 ```bash
 git clone <repository-url>
@@ -837,13 +1015,11 @@ cd verifactu-app/backend
 
 ### 2. Crear entorno virtual
 
-En Windows:
-
 ```powershell
 python -m venv .venv
 ```
 
-### 3. Activar entorno virtual
+### 3. Activar
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
@@ -855,33 +1031,23 @@ python -m venv .venv
 pip install -e ".[dev]"
 ```
 
-### 5. Configurar variables de entorno
+### 5. Configurar entorno
 
-Crear `.env` en la raíz del proyecto tomando como referencia:
+Crear:
+
+```text
+.env
+```
+
+en la raíz tomando como referencia:
 
 ```text
 .env.example
 ```
 
-Es necesario configurar tanto PostgreSQL como una clave JWT segura.
-
-Puede generarse una clave aleatoria para desarrollo mediante Python:
-
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-El valor generado debe almacenarse únicamente en `.env`:
-
-```env
-JWT_SECRET_KEY=<clave-generada>
-```
-
-No debe copiarse al repositorio ni compartirse públicamente.
-
 ### 6. Iniciar PostgreSQL
 
-Desde la raíz del proyecto:
+Desde la raíz:
 
 ```powershell
 docker compose up -d
@@ -893,7 +1059,7 @@ Comprobar:
 docker ps
 ```
 
-### 7. Ejecutar migraciones
+### 7. Migraciones
 
 Desde `backend`:
 
@@ -907,13 +1073,13 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-La API estará disponible en:
+API:
 
 ```text
 http://127.0.0.1:8000
 ```
 
-Swagger UI:
+Swagger:
 
 ```text
 http://127.0.0.1:8000/docs
@@ -977,13 +1143,11 @@ Body:
 }
 ```
 
-Si la autenticación es correcta:
+Respuesta correcta:
 
 ```text
 200 OK
 ```
-
-Respuesta:
 
 ```json
 {
@@ -992,19 +1156,11 @@ Respuesta:
 }
 ```
 
-El JWT contiene el identificador del usuario en el claim:
-
-```text
-sub
-```
-
-Si las credenciales no son válidas o el usuario o su empresa no pueden autenticarse:
+Credenciales inválidas:
 
 ```text
 401 Unauthorized
 ```
-
-Respuesta:
 
 ```json
 {
@@ -1012,245 +1168,120 @@ Respuesta:
 }
 ```
 
-La respuesta incluye:
+### Usuario actual
+
+```http
+GET /auth/me
+```
+
+Header:
 
 ```text
-WWW-Authenticate: Bearer
+Authorization: Bearer <access_token>
+```
+
+Respuesta:
+
+```text
+200 OK
+```
+
+El contenido utiliza el schema:
+
+```text
+UserRead
+```
+
+Si el token no puede validarse:
+
+```text
+401 Unauthorized
 ```
 
 ---
 
 ## 🏢 API Business
 
-### Crear empresa
+### Crear
 
 ```http
 POST /businesses
 ```
 
-Ejemplo:
-
-```json
-{
-  "legal_name": "Mi Tienda Demo SL",
-  "tax_id": "B87654321",
-  "trade_name": "Mi Tienda",
-  "address": "Calle Principal 10",
-  "postal_code": "41001",
-  "city": "Sevilla",
-  "province": "Sevilla",
-  "country_code": "ES"
-}
-```
-
-Respuesta:
-
-```text
-201 Created
-```
-
-Si ya existe el identificador fiscal:
-
-```text
-409 Conflict
-```
-
-### Listar empresas
+### Listar
 
 ```http
 GET /businesses
 ```
 
-Respuesta:
-
-```text
-200 OK
-```
-
-### Consultar empresa
+### Consultar
 
 ```http
 GET /businesses/{business_id}
 ```
 
-Si existe:
-
-```text
-200 OK
-```
-
-Si no existe:
-
-```text
-404 Not Found
-```
-
-### Actualizar empresa
+### Actualizar
 
 ```http
 PATCH /businesses/{business_id}
 ```
 
-Permite actualizaciones parciales.
-
-El estado `is_active` no se modifica mediante este endpoint.
-
-Posibles respuestas:
-
-```text
-200 OK
-404 Not Found
-409 Conflict
-```
-
-### Desactivar empresa
+### Desactivar
 
 ```http
 PATCH /businesses/{business_id}/deactivate
 ```
 
-La empresa permanece almacenada con:
-
-```json
-{
-  "is_active": false
-}
-```
-
-### Reactivar empresa
+### Reactivar
 
 ```http
 PATCH /businesses/{business_id}/activate
 ```
 
-La empresa vuelve a:
-
-```json
-{
-  "is_active": true
-}
-```
-
-> Los endpoints de Business todavía no requieren autenticación. La protección y las reglas de autorización por empresa forman parte de la siguiente fase del sistema de seguridad.
+> Estos endpoints todavía no están protegidos mediante autenticación y autorización.
 
 ---
 
 ## 👤 API User
 
-### Crear usuario
+### Crear
 
 ```http
 POST /users
 ```
 
-Ejemplo:
+### Consultar
 
-```json
-{
-  "business_id": 1,
-  "email": "admin@example.com",
-  "password": "password123",
-  "full_name": "Usuario Demo"
-}
+```http
+GET /users/{user_id}
 ```
 
-Si la creación es correcta:
+### Actualizar
 
-```text
-201 Created
+```http
+PATCH /users/{user_id}
 ```
 
-La respuesta contiene los datos públicos del usuario, pero nunca:
+### Desactivar
+
+```http
+PATCH /users/{user_id}/deactivate
+```
+
+### Reactivar
+
+```http
+PATCH /users/{user_id}/activate
+```
+
+La API nunca devuelve:
 
 ```text
 password
 password_hash
 ```
 
-Si el email ya está registrado:
-
-```text
-409 Conflict
-```
-
-Si la empresa no existe:
-
-```text
-404 Not Found
-```
-
-Si la empresa está inactiva:
-
-```text
-409 Conflict
-```
-
-### Consultar usuario
-
-```http
-GET /users/{user_id}
-```
-
-Posibles respuestas:
-
-```text
-200 OK
-404 Not Found
-```
-
-### Actualizar usuario
-
-```http
-PATCH /users/{user_id}
-```
-
-Actualmente permite modificar parcialmente:
-
-- email;
-- nombre completo.
-
-No permite modificar mediante este endpoint:
-
-- `business_id`;
-- `password`;
-- `password_hash`;
-- `is_active`.
-
-Si el nuevo email pertenece a otro usuario:
-
-```text
-409 Conflict
-```
-
-### Desactivar usuario
-
-```http
-PATCH /users/{user_id}/deactivate
-```
-
-El usuario permanece almacenado con:
-
-```json
-{
-  "is_active": false
-}
-```
-
-### Reactivar usuario
-
-```http
-PATCH /users/{user_id}/activate
-```
-
-El usuario vuelve a:
-
-```json
-{
-  "is_active": true
-}
-```
-
-> Los endpoints de User todavía no requieren autenticación. La futura capa de autorización deberá impedir el acceso arbitrario a usuarios pertenecientes a otras empresas.
+> Estos endpoints todavía no están protegidos mediante reglas de autorización por empresa.
 
 ---
 
@@ -1258,7 +1289,7 @@ El usuario vuelve a:
 
 La suite utiliza Pytest.
 
-Ejecutar todos los tests:
+Ejecutar:
 
 ```powershell
 pytest -q
@@ -1267,95 +1298,112 @@ pytest -q
 Estado actual:
 
 ```text
-65 passed
+77 passed
 ```
 
-Existe actualmente un warning conocido relacionado con `Starlette TestClient` y `httpx`. No bloquea la ejecución de la suite y se abordará de forma independiente.
+Existe actualmente un warning conocido relacionado con `Starlette TestClient` y `httpx`.
 
-Los tests cubren actualmente:
+No bloquea la suite y se abordará de forma independiente.
 
 ### Infraestructura
 
-- health check de FastAPI;
-- conexión con PostgreSQL;
-- aislamiento transaccional de pruebas.
+Los tests cubren:
+
+- health check;
+- conexión PostgreSQL;
+- aislamiento transaccional;
+- overrides de `get_db`.
 
 ### Business
 
-- creación mediante Repository;
-- búsqueda por ID;
-- búsqueda por identificador fiscal;
-- actualización parcial;
+Se prueba:
+
+- Repository;
+- Service;
+- API;
+- creación;
+- consulta;
 - listado;
-- creación mediante Service;
-- consulta mediante Service;
-- actualización mediante Service;
-- listado mediante Service;
-- rechazo de identificadores fiscales duplicados;
-- activación y desactivación;
-- comportamiento ante IDs inexistentes;
-- creación mediante API (`201 Created`);
-- consulta y listado mediante API (`200 OK`);
-- actualización mediante API (`200 OK`);
-- rechazo de duplicados mediante API (`409 Conflict`);
-- activación y desactivación mediante API;
-- respuestas `404 Not Found`.
+- actualización;
+- duplicados;
+- activación;
+- desactivación;
+- IDs inexistentes.
 
 ### User
 
-- creación mediante Repository;
-- búsqueda por ID;
-- búsqueda por email;
-- listado por empresa;
-- actualización mediante Repository;
-- creación mediante Service;
-- asociación con una empresa;
-- rechazo de empresas inexistentes;
-- rechazo de empresas inactivas;
-- rechazo de emails duplicados;
-- hashing de contraseña;
-- verificación del hash;
-- actualización mediante Service;
-- rechazo de emails duplicados durante actualización;
-- activación y desactivación;
-- comportamiento ante IDs inexistentes;
-- creación mediante API (`201 Created`);
-- consulta mediante API (`200 OK`);
-- actualización mediante API (`200 OK`);
-- rechazo de emails duplicados mediante API (`409 Conflict`);
-- rechazo de empresa inexistente mediante API (`404 Not Found`);
-- activación y desactivación mediante API;
-- no exposición de `password`;
-- no exposición de `password_hash`.
+Se prueba:
 
-### Seguridad JWT
+- Repository;
+- Service;
+- API;
+- creación;
+- asociación con Business;
+- emails duplicados;
+- empresas inexistentes;
+- empresas inactivas;
+- hashing;
+- verificación de password;
+- actualización;
+- activación;
+- desactivación;
+- no exposición de credenciales.
 
-- creación de access tokens;
-- inclusión del usuario en `sub`;
-- inclusión de `iat`;
-- inclusión de `exp`;
-- decodificación de tokens válidos;
-- rechazo de tokens manipulados;
-- rechazo de tokens expirados.
+### JWT
 
-### Autenticación
+Se prueba:
 
-- autenticación correcta mediante email y contraseña;
-- rechazo de contraseña incorrecta;
-- rechazo de email inexistente;
-- rechazo de usuario inactivo;
-- rechazo de empresa inactiva;
-- generación de access token desde `AuthService`;
-- asociación del `sub` del token con el usuario autenticado;
-- login mediante API;
-- respuesta `200 OK` para credenciales válidas;
-- respuesta `401 Unauthorized` para credenciales inválidas;
-- respuesta genérica para evitar revelar la existencia de cuentas;
-- cabecera `WWW-Authenticate: Bearer`.
+- creación de token;
+- `sub`;
+- `iat`;
+- `exp`;
+- decodificación;
+- manipulación de token;
+- expiración.
 
-Los tests de persistencia utilizan transacciones aisladas que se revierten al terminar cada prueba para evitar contaminar la base de desarrollo.
+### AuthService
 
-Los tests de integración utilizan `FastAPI TestClient` y sobrescriben temporalmente `get_db` para utilizar la misma sesión aislada.
+Se prueba:
+
+- autenticación;
+- generación de access token;
+- asociación del token al usuario.
+
+### Login API
+
+Se prueba:
+
+- login correcto;
+- credenciales incorrectas;
+- respuesta `401`;
+- `WWW-Authenticate`.
+
+### Dependencias de autenticación
+
+Se prueba `get_current_user` para:
+
+- token válido;
+- ausencia de credenciales;
+- token inválido;
+- `sub` inválido;
+- usuario inexistente;
+- usuario inactivo;
+- empresa inactiva.
+
+### `/auth/me`
+
+Se prueba:
+
+- acceso con Bearer válido;
+- respuesta pública del usuario;
+- ausencia de password;
+- ausencia de password hash;
+- ausencia de token;
+- token inválido;
+- desactivación del usuario después de emitir el token;
+- desactivación de la empresa después de emitir el token.
+
+Los tests de persistencia utilizan transacciones aisladas que se revierten tras cada prueba.
 
 ---
 
@@ -1372,71 +1420,71 @@ e4eb415b0211  add is_active to businesses
 a23de07e7fb2  create users table
 ```
 
-La revisión actual de la base de datos es:
+Head actual:
 
 ```text
-a23de07e7fb2 (head)
+a23de07e7fb2
 ```
 
-Consultar migración actual:
+Consultar:
 
 ```powershell
 alembic current
 ```
 
-Crear una nueva migración:
+Crear migración:
 
 ```powershell
 alembic revision --autogenerate -m "description"
 ```
 
-Aplicar migraciones:
+Aplicar:
 
 ```powershell
 alembic upgrade head
 ```
 
-Las migraciones autogeneradas deben revisarse antes de aplicarse.
+Las migraciones autogeneradas deben revisarse manualmente antes de aplicarse.
 
 ---
 
 ## 🧾 VERI\*FACTU
 
-La arquitectura está siendo diseñada desde el inicio para soportar posteriormente los requisitos asociados a VERI\*FACTU.
+La arquitectura está siendo diseñada para soportar posteriormente los requisitos asociados a VERI\*FACTU.
 
-Entre los elementos previstos se encuentran:
+Elementos previstos:
 
 - registros de facturación de alta;
 - registros de anulación;
 - subsanaciones;
-- encadenamiento de registros;
+- encadenamiento;
 - huella/hash;
-- inmutabilidad de registros;
-- generación de QR;
-- generación de los formatos requeridos;
-- comunicación con los servicios de la AEAT;
+- inmutabilidad;
+- QR;
+- generación de formatos requeridos;
+- comunicación con servicios AEAT;
 - almacenamiento de respuestas;
-- trazabilidad de envíos;
-- detección de incidencias;
-- verificación de la cadena de registros.
+- trazabilidad;
+- incidencias;
+- verificación de cadena.
 
-Los registros de facturación se diseñarán separando conceptualmente:
+Los registros separarán conceptualmente:
 
 ```text
 previous_record_id
 ```
 
-para el encadenamiento de registros, de:
+para encadenamiento, de:
 
 ```text
 corrects_record_id
 ```
 
-para representar relaciones de corrección o subsanación.
+para correcciones o subsanaciones.
 
-La implementación definitiva de formatos, campos, algoritmos, reglas de encadenamiento, QR y comunicación deberá seguir las **especificaciones técnicas vigentes publicadas por la AEAT** en el momento de su implementación.
+La implementación definitiva deberá seguir las **especificaciones técnicas vigentes publicadas por la AEAT** en el momento de su desarrollo.
 
-> La arquitectura preparada para VERI\*FACTU no equivale por sí misma a conformidad normativa.
+> Una arquitectura preparada para VERI\*FACTU no implica por sí misma conformidad normativa.
 
 ---
 
@@ -1460,64 +1508,72 @@ La implementación definitiva de formatos, campos, algoritmos, reglas de encaden
 - [x] Schemas
 - [x] Repository
 - [x] Service
-- [x] POST Business
-- [x] GET Business
-- [x] PATCH Business
+- [x] POST
+- [x] GET
+- [x] PATCH
 - [x] Listado
-- [x] Activación y desactivación
-- [x] Tests de Repository
-- [x] Tests de Service
-- [x] Tests de API
-- [x] Gestión del ciclo de vida
+- [x] Activación
+- [x] Desactivación
+- [x] Tests Repository
+- [x] Tests Service
+- [x] Tests API
+- [x] Ciclo de vida
 
 ### Fase 3 — Usuarios y autenticación
 
 #### Usuarios
 
 - [x] Modelo User
-- [x] Migración de usuarios
+- [x] Migración
 - [x] Relación Business/User
 - [x] Schemas
 - [x] Repository
 - [x] Service
-- [x] Creación de usuarios
-- [x] Consulta de usuarios
-- [x] Actualización de usuarios
-- [x] Activación y desactivación
-- [x] Validación de email
+- [x] Creación
+- [x] Consulta
+- [x] Actualización
+- [x] Activación/desactivación
+- [x] Validación email
 - [x] Email único
-- [x] Asociación usuario/empresa
-- [x] Validación de empresa activa
-- [x] API User
-- [x] Tests de Repository
-- [x] Tests de Service
-- [x] Tests de API
+- [x] Asociación empresa
+- [x] Validación empresa activa
+- [x] API
+- [x] Tests Repository
+- [x] Tests Service
+- [x] Tests API
 
 #### Seguridad y autenticación
 
-- [x] Hash de contraseñas con Argon2
+- [x] Argon2
 - [x] Verificación de contraseñas
-- [x] Configuración JWT mediante variables de entorno
-- [x] Generación de JWT
-- [x] Validación de JWT
-- [x] Expiración de access tokens
+- [x] Configuración JWT
+- [x] Generación JWT
+- [x] Validación JWT
+- [x] Expiración
 - [x] Rechazo de tokens manipulados
 - [x] Rechazo de tokens expirados
 - [x] Autenticación de credenciales
-- [x] Validación de usuario activo durante login
-- [x] Validación de empresa activa durante login
 - [x] AuthService
-- [x] Endpoint de login
-- [x] Tests de seguridad JWT
-- [x] Tests de AuthService
-- [x] Tests de API Auth
-- [ ] Usuario autenticado (`get_current_user`)
-- [ ] Bearer authentication en endpoints protegidos
-- [ ] Protección de endpoints
+- [x] Login
+- [x] HTTPBearer
+- [x] `get_current_user`
+- [x] `/auth/me`
+- [x] Validación de usuario activo
+- [x] Validación de empresa activa
+- [x] Revocación funcional
+- [x] Tests JWT
+- [x] Tests AuthService
+- [x] Tests API Auth
+- [x] Tests dependencia de autenticación
+- [ ] Protección de endpoints Business
+- [ ] Protección de endpoints User
 - [ ] Autorización por empresa
-- [ ] Aislamiento de recursos entre empresas
+- [ ] Aislamiento multiempresa
+- [ ] Estrategia de bootstrap/registro inicial
+- [ ] Normalización robusta de email
+- [ ] Hardening frente a enumeración temporal
 - [ ] Cambio de contraseña
-- [ ] Roles/permisos si los requisitos del dominio los necesitan
+- [ ] Roles/permisos si el dominio los necesita
 
 ### Fase 4 — Productos
 
@@ -1532,7 +1588,7 @@ La implementación definitiva de formatos, campos, algoritmos, reglas de encaden
 - [ ] Modelo Customer
 - [ ] CRUD
 - [ ] Validaciones fiscales
-- [ ] Activación y desactivación
+- [ ] Activación/desactivación
 - [ ] Tests
 
 ### Fase 6 — Facturación
@@ -1541,8 +1597,9 @@ La implementación definitiva de formatos, campos, algoritmos, reglas de encaden
 - [ ] Numeración
 - [ ] Factura completa
 - [ ] Factura simplificada
-- [ ] Líneas de factura
-- [ ] Cálculo de bases e impuestos
+- [ ] Líneas
+- [ ] Bases
+- [ ] Impuestos
 - [ ] Totales
 - [ ] PDF
 
@@ -1556,8 +1613,8 @@ La implementación definitiva de formatos, campos, algoritmos, reglas de encaden
 - [ ] Huella/hash según especificación vigente
 - [ ] Inmutabilidad
 - [ ] QR
-- [ ] Generación de mensajes AEAT
-- [ ] Integración con servicios AEAT
+- [ ] Mensajes AEAT
+- [ ] Integración AEAT
 - [ ] Historial de envíos
 - [ ] Gestión de respuestas
 - [ ] Tests de integridad
@@ -1588,12 +1645,12 @@ No se plantea inicialmente como:
 - ERP completo;
 - sistema de contabilidad integral;
 - software de nóminas;
-- sistema de conciliación bancaria;
+- conciliación bancaria;
 - CRM avanzado;
-- sistema de gestión de almacenes múltiples;
+- gestión de múltiples almacenes;
 - plataforma de comercio electrónico.
 
-El objetivo es mantener un producto pequeño, comprensible y mantenible, evitando incorporar complejidad que no sea necesaria para el dominio de facturación.
+El objetivo es mantener un producto pequeño, comprensible y mantenible.
 
 ---
 

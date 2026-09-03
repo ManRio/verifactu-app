@@ -10,6 +10,9 @@ from app.domain.user.service import (
     UserBusinessInactiveError,
     UserBusinessNotFoundError,
 )
+from app.api.dependencies.auth import get_current_user
+from app.domain.user.model import User
+from app.domain.user.schemas import UserRead
 
 
 router = APIRouter(
@@ -43,3 +46,12 @@ def login(
                 "WWW-Authenticate": "Bearer",
             },
         ) from exc
+
+@router.get(
+    "/me",
+    response_model=UserRead,
+)
+def get_me(
+    current_user: User = Depends(get_current_user),
+) -> User:
+    return current_user
