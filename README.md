@@ -30,11 +30,13 @@ El proyecto se desarrolla también como proyecto de portfolio, prestando especia
 
 ## 🚧 Estado actual
 
-Actualmente se encuentra implementada la infraestructura base del backend y los dominios **Business** y **User**.
+Actualmente se encuentra implementada la infraestructura base del backend, los dominios **Business** y **User** y la primera fase del sistema de **autenticación mediante JWT**.
 
 La aplicación permite gestionar empresas y usuarios asociados a ellas. Las contraseñas se almacenan mediante hash Argon2 y nunca se persisten ni se devuelven en texto plano.
 
-La autenticación mediante login y tokens todavía no está implementada.
+También se encuentra implementado el login mediante email y contraseña. Cuando las credenciales son válidas y tanto el usuario como su empresa están activos, la API genera un access token JWT firmado.
+
+La identificación del usuario autenticado a partir del Bearer token, la protección de endpoints y las reglas de autorización todavía están pendientes.
 
 ### Implementado
 
@@ -52,9 +54,17 @@ La autenticación mediante login y tokens todavía no está implementada.
 - Control transaccional desde la capa Service.
 - Endpoint de health check.
 - Endpoint de health check de PostgreSQL.
+- Hash de contraseñas mediante Argon2.
+- Verificación de contraseñas.
+- Autenticación mediante email y contraseña.
+- Generación y validación de JWT mediante PyJWT.
+- Expiración de access tokens.
+- Rechazo de tokens manipulados o expirados.
+- Endpoint de login.
 - Fixtures transaccionales de testing.
 - Tests de Repository.
 - Tests de Service.
+- Tests de seguridad.
 - Tests de integración de API.
 - Swagger/OpenAPI mediante FastAPI.
 
@@ -84,15 +94,37 @@ La autenticación mediante login y tokens todavía no está implementada.
 - Rechazo de creación de usuarios para empresas inactivas.
 - Detección previa de emails duplicados.
 - Hash seguro de contraseñas mediante Argon2.
-- Verificación de contraseñas preparada para la futura autenticación.
+- Verificación de contraseñas.
+- Autenticación mediante email y contraseña.
+- Rechazo de autenticación de usuarios inactivos.
+- Rechazo de autenticación cuando la empresa está inactiva.
 - API REST del dominio User.
 - Exclusión de `password` y `password_hash` de las respuestas HTTP.
+
+### Autenticación
+
+- Schemas específicos de autenticación.
+- `AuthService`.
+- Login mediante email y contraseña.
+- Access tokens JWT.
+- Firma mediante clave secreta configurable.
+- Algoritmo JWT configurable.
+- Expiración configurable.
+- Claim `sub` asociado al identificador del usuario.
+- Claims `iat` y `exp`.
+- Validación criptográfica de tokens.
+- Rechazo de tokens manipulados.
+- Rechazo de tokens expirados.
+- Respuesta genérica ante errores de autenticación.
+- Cabecera `WWW-Authenticate: Bearer` en respuestas `401`.
 
 ### API implementada
 
 ```text
 GET   /health
 GET   /health/db
+
+POST  /auth/login
 
 POST  /businesses
 GET   /businesses
@@ -109,6 +141,8 @@ PATCH /users/{user_id}/activate
 ```
 
 Actualmente no existe un endpoint global `GET /users`. Los usuarios pertenecen a una empresa y el listado por empresa se expondrá cuando se defina el contrato HTTP adecuado y las reglas de autorización.
+
+Los endpoints de Business y User todavía no están protegidos mediante JWT. La autenticación ya permite emitir tokens, pero la identificación del usuario actual y la autorización de acceso a recursos se implementarán en los siguientes pasos.
 
 ---
 
@@ -128,6 +162,7 @@ Actualmente no existe un endpoint global `GET /users`. Los usuarios pertenecen a
 - PostgreSQL 17
 - pwdlib
 - Argon2
+- PyJWT
 - Pytest
 - Ruff
 
@@ -219,6 +254,29 @@ UserService
    └── commit
 ```
 
+La autenticación se mantiene separada del CRUD de usuarios mediante `AuthService`:
+
+```text
+LoginRequest
+     │
+     ▼
+AuthService
+     │
+     ▼
+UserService.authenticate_user()
+     │
+     ├── comprobar usuario
+     ├── verificar contraseña
+     ├── comprobar usuario activo
+     └── comprobar empresa activa
+     │
+     ▼
+create_access_token()
+     │
+     ▼
+TokenResponse
+```
+
 ### Repository
 
 Responsable exclusivamente del acceso a datos:
@@ -252,6 +310,7 @@ verifactu-app/
 │   ├── app/
 │   │   ├── api/
 │   │   │   └── routes/
+│   │   │       ├── auth.py
 │   │   │       ├── business.py
 │   │   │       └── user.py
 │   │   │
@@ -265,6 +324,11 @@ verifactu-app/
 │   │   │   └── session.py
 │   │   │
 │   │   ├── domain/
+│   │   │   ├── auth/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── service.py
+│   │   │   │
 │   │   │   ├── business/
 │   │   │   │   ├── model.py
 │   │   │   │   ├── repository.py
@@ -281,13 +345,16 @@ verifactu-app/
 │   │
 │   ├── tests/
 │   │   ├── conftest.py
+│   │   ├── test_auth_api.py
+│   │   ├── test_auth_service.py
 │   │   ├── test_business_api.py
 │   │   ├── test_business_repository.py
 │   │   ├── test_business_service.py
+│   │   ├── test_health.py
+│   │   ├── test_security.py
 │   │   ├── test_user_api.py
 │   │   ├── test_user_repository.py
-│   │   ├── test_user_service.py
-│   │   └── test_health.py
+│   │   └── test_user_service.py
 │   │
 │   ├── alembic.ini
 │   └── pyproject.toml
@@ -386,7 +453,7 @@ Actualmente almacena:
 
 El email es globalmente único en el MVP.
 
-Esto permitirá posteriormente realizar el login utilizando:
+Esto permite realizar el login utilizando:
 
 ```text
 email + password
@@ -400,11 +467,7 @@ La unicidad está protegida tanto por PostgreSQL como mediante una comprobación
 
 ### Contraseñas
 
-Las contraseñas en texto plano únicamente forman parte del schema de entrada:
-
-```text
-UserCreate.password
-```
+Las contraseñas en texto plano únicamente forman parte de los datos de entrada durante la creación de usuarios y el proceso de login.
 
 Antes de persistir un usuario:
 
@@ -438,6 +501,24 @@ Antes de crear un usuario, `UserService` comprueba:
 
 Solo después se genera el hash de la contraseña y se persiste el usuario.
 
+### Autenticación de credenciales
+
+`UserService` incorpora la validación de credenciales mediante:
+
+```text
+authenticate_user()
+```
+
+Durante la autenticación se comprueba:
+
+1. que el usuario exista;
+2. que la contraseña sea válida;
+3. que el usuario esté activo;
+4. que la empresa asociada exista;
+5. que la empresa esté activa.
+
+Un email inexistente y una contraseña incorrecta se tratan como credenciales inválidas, evitando exponer innecesariamente la existencia de cuentas mediante la respuesta HTTP.
+
 ### Ciclo de vida
 
 Al igual que `Business`, `User` utiliza:
@@ -463,46 +544,207 @@ La contraseña tampoco se modifica mediante la actualización genérica. Los cam
 
 ## 🔐 Seguridad y autenticación
 
-La infraestructura inicial de seguridad de contraseñas ya está implementada.
+La primera fase del sistema de autenticación está implementada.
 
-Actualmente existe:
+La seguridad de contraseñas y JWT se concentra principalmente en:
 
 ```text
 app/core/security.py
 ```
 
-con operaciones para:
+Actualmente proporciona:
 
 ```text
 hash_password()
 verify_password()
+create_access_token()
+decode_access_token()
 ```
 
-El algoritmo utilizado es Argon2 mediante `pwdlib`.
+### Contraseñas
+
+Las contraseñas se protegen mediante Argon2 utilizando `pwdlib`.
+
+Se garantiza que:
+
+- la contraseña en texto plano no se persiste;
+- el hash no se devuelve mediante la API;
+- la contraseña se verifica contra el hash almacenado durante el login.
+
+### JWT
+
+Los access tokens se generan mediante `PyJWT`.
+
+Actualmente incluyen:
+
+```text
+sub
+iat
+exp
+```
+
+El claim:
+
+```text
+sub
+```
+
+contiene el identificador del usuario convertido a `str`.
+
+Se utiliza el identificador interno y no el email porque el identificador es estable mientras que el email puede modificarse.
+
+La duración del token y los parámetros criptográficos se obtienen de la configuración de la aplicación.
+
+El sistema valida la firma y la expiración al decodificar un token.
+
+Los tokens manipulados o expirados son rechazados.
+
+### Login
+
+El endpoint:
+
+```http
+POST /auth/login
+```
+
+recibe JSON:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+```
+
+Si las credenciales son válidas y tanto el usuario como su empresa están activos:
+
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+El access token utiliza el identificador del usuario como `sub`.
+
+Ante un fallo de autenticación se devuelve una respuesta genérica:
+
+```text
+401 Unauthorized
+```
+
+con:
+
+```json
+{
+  "detail": "Incorrect email or password"
+}
+```
+
+y la cabecera:
+
+```text
+WWW-Authenticate: Bearer
+```
+
+La respuesta HTTP no distingue entre:
+
+- usuario inexistente;
+- contraseña incorrecta;
+- usuario inactivo;
+- empresa inexistente;
+- empresa inactiva.
 
 ### Implementado
 
-- Hash de contraseñas.
+- Hash de contraseñas mediante Argon2.
 - Verificación de contraseñas.
 - No persistencia de contraseñas en texto plano.
 - No exposición de hashes mediante la API.
 - Validación de email.
 - Usuarios activos/inactivos.
+- Autenticación de credenciales.
+- Validación de empresa activa durante el login.
+- Generación de JWT.
+- Firma de JWT.
+- Expiración de access tokens.
+- Claims `sub`, `iat` y `exp`.
+- Validación de JWT.
+- Rechazo de tokens manipulados.
+- Rechazo de tokens expirados.
+- Endpoint de login.
+- Respuestas de autenticación que evitan revelar información innecesaria sobre las cuentas.
 
 ### Pendiente
 
 Todavía no están implementados:
 
-- endpoint de login;
-- autenticación mediante JWT;
-- access tokens;
-- identificación del usuario autenticado;
+- identificación del usuario autenticado mediante Bearer token;
+- `get_current_user`;
 - protección de endpoints;
-- autorización;
+- autorización por empresa;
+- aislamiento de recursos entre empresas;
 - roles o permisos;
-- cambio seguro de contraseña.
+- cambio seguro de contraseña;
+- refresh tokens, si posteriormente resultan necesarios.
 
-Por tanto, la existencia del dominio `User` **no implica todavía que los endpoints estén protegidos mediante autenticación**.
+Por tanto, disponer de login y emisión de JWT **todavía no implica que los endpoints de Business y User estén protegidos**.
+
+---
+
+## 🔑 Flujo de autenticación actual
+
+```text
+email + password
+      │
+      ▼
+POST /auth/login
+      │
+      ▼
+AuthService
+      │
+      ▼
+UserService.authenticate_user()
+      │
+      ├── usuario existe
+      ├── contraseña correcta
+      ├── usuario activo
+      └── empresa activa
+      │
+      ▼
+create_access_token()
+      │
+      ▼
+JWT firmado
+      │
+      ├── sub = user.id
+      ├── iat
+      └── exp
+      │
+      ▼
+TokenResponse
+```
+
+El siguiente paso del sistema de autenticación será implementar el flujo inverso para las peticiones protegidas:
+
+```text
+Authorization: Bearer <token>
+            │
+            ▼
+validar y decodificar JWT
+            │
+            ▼
+obtener user_id desde sub
+            │
+            ▼
+consultar usuario
+            │
+            ▼
+validar usuario y empresa
+            │
+            ▼
+usuario autenticado
+```
 
 ---
 
@@ -546,7 +788,7 @@ users.business_id → businesses.id
 
 ## 🔐 Variables de entorno
 
-Las credenciales reales no deben almacenarse en Git.
+Las credenciales reales y claves criptográficas no deben almacenarse en Git.
 
 El proyecto utiliza:
 
@@ -570,9 +812,17 @@ POSTGRES_USER=verifactu
 POSTGRES_PASSWORD=change_me
 POSTGRES_HOST=localhost
 POSTGRES_PORT=55732
+
+JWT_SECRET_KEY=change_me
+JWT_ALGORITHM=HS256
+JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-Nunca deben almacenarse contraseñas reales, tokens, claves privadas u otros secretos dentro del repositorio.
+`JWT_SECRET_KEY` debe sustituirse en el entorno real por una clave aleatoria segura.
+
+La clave real utilizada para firmar tokens nunca debe almacenarse en el repositorio.
+
+Nunca deben almacenarse contraseñas reales, tokens, claves privadas u otros secretos dentro de Git.
 
 ---
 
@@ -612,6 +862,22 @@ Crear `.env` en la raíz del proyecto tomando como referencia:
 ```text
 .env.example
 ```
+
+Es necesario configurar tanto PostgreSQL como una clave JWT segura.
+
+Puede generarse una clave aleatoria para desarrollo mediante Python:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+El valor generado debe almacenarse únicamente en `.env`:
+
+```env
+JWT_SECRET_KEY=<clave-generada>
+```
+
+No debe copiarse al repositorio ni compartirse públicamente.
 
 ### 6. Iniciar PostgreSQL
 
@@ -690,6 +956,66 @@ Respuesta esperada:
   "status": "ok",
   "database": 1
 }
+```
+
+---
+
+## 🔐 API Auth
+
+### Login
+
+```http
+POST /auth/login
+```
+
+Body:
+
+```json
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+```
+
+Si la autenticación es correcta:
+
+```text
+200 OK
+```
+
+Respuesta:
+
+```json
+{
+  "access_token": "<jwt>",
+  "token_type": "bearer"
+}
+```
+
+El JWT contiene el identificador del usuario en el claim:
+
+```text
+sub
+```
+
+Si las credenciales no son válidas o el usuario o su empresa no pueden autenticarse:
+
+```text
+401 Unauthorized
+```
+
+Respuesta:
+
+```json
+{
+  "detail": "Incorrect email or password"
+}
+```
+
+La respuesta incluye:
+
+```text
+WWW-Authenticate: Bearer
 ```
 
 ---
@@ -804,6 +1130,8 @@ La empresa vuelve a:
   "is_active": true
 }
 ```
+
+> Los endpoints de Business todavía no requieren autenticación. La protección y las reglas de autorización por empresa forman parte de la siguiente fase del sistema de seguridad.
 
 ---
 
@@ -922,6 +1250,8 @@ El usuario vuelve a:
 }
 ```
 
+> Los endpoints de User todavía no requieren autenticación. La futura capa de autorización deberá impedir el acceso arbitrario a usuarios pertenecientes a otras empresas.
+
 ---
 
 ## 🧪 Testing
@@ -937,8 +1267,10 @@ pytest -q
 Estado actual:
 
 ```text
-54 passed
+65 passed
 ```
+
+Existe actualmente un warning conocido relacionado con `Starlette TestClient` y `httpx`. No bloquea la ejecución de la suite y se abordará de forma independiente.
 
 Los tests cubren actualmente:
 
@@ -996,11 +1328,34 @@ Los tests cubren actualmente:
 - no exposición de `password`;
 - no exposición de `password_hash`.
 
+### Seguridad JWT
+
+- creación de access tokens;
+- inclusión del usuario en `sub`;
+- inclusión de `iat`;
+- inclusión de `exp`;
+- decodificación de tokens válidos;
+- rechazo de tokens manipulados;
+- rechazo de tokens expirados.
+
+### Autenticación
+
+- autenticación correcta mediante email y contraseña;
+- rechazo de contraseña incorrecta;
+- rechazo de email inexistente;
+- rechazo de usuario inactivo;
+- rechazo de empresa inactiva;
+- generación de access token desde `AuthService`;
+- asociación del `sub` del token con el usuario autenticado;
+- login mediante API;
+- respuesta `200 OK` para credenciales válidas;
+- respuesta `401 Unauthorized` para credenciales inválidas;
+- respuesta genérica para evitar revelar la existencia de cuentas;
+- cabecera `WWW-Authenticate: Bearer`.
+
 Los tests de persistencia utilizan transacciones aisladas que se revierten al terminar cada prueba para evitar contaminar la base de desarrollo.
 
 Los tests de integración utilizan `FastAPI TestClient` y sobrescriben temporalmente `get_db` para utilizar la misma sesión aislada.
-
-Existe actualmente un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. No bloquea la ejecución de la suite y se abordará de forma independiente.
 
 ---
 
@@ -1142,11 +1497,25 @@ La implementación definitiva de formatos, campos, algoritmos, reglas de encaden
 
 - [x] Hash de contraseñas con Argon2
 - [x] Verificación de contraseñas
-- [ ] Login
-- [ ] JWT
-- [ ] Usuario autenticado
+- [x] Configuración JWT mediante variables de entorno
+- [x] Generación de JWT
+- [x] Validación de JWT
+- [x] Expiración de access tokens
+- [x] Rechazo de tokens manipulados
+- [x] Rechazo de tokens expirados
+- [x] Autenticación de credenciales
+- [x] Validación de usuario activo durante login
+- [x] Validación de empresa activa durante login
+- [x] AuthService
+- [x] Endpoint de login
+- [x] Tests de seguridad JWT
+- [x] Tests de AuthService
+- [x] Tests de API Auth
+- [ ] Usuario autenticado (`get_current_user`)
+- [ ] Bearer authentication en endpoints protegidos
 - [ ] Protección de endpoints
-- [ ] Autorización
+- [ ] Autorización por empresa
+- [ ] Aislamiento de recursos entre empresas
 - [ ] Cambio de contraseña
 - [ ] Roles/permisos si los requisitos del dominio los necesitan
 

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.core.security import hash_password
+from app.core.security import hash_password, verify_password
 from app.domain.business.repository import BusinessRepository
 from app.domain.user.model import User
 from app.domain.user.repository import UserRepository
@@ -18,6 +18,11 @@ class UserBusinessNotFoundError(Exception):
 class UserBusinessInactiveError(Exception):
     pass
 
+class InvalidUserCredentialsError(Exception):
+    pass
+
+class InactiveUserError(Exception):
+    pass
 
 class UserService:
     def __init__(self, db: Session):
@@ -129,5 +134,36 @@ class UserService:
 
         self.db.commit()
         self.db.refresh(user)
+
+        return user
+
+    def authenticate_user(
+            self,
+            email:str,
+            password: str,
+    ) -> User:
+        user = self.repository.get_by_email(email)
+
+        if user is None:
+            raise InvalidUserCredentialsError
+
+        if not verify_password(
+            password,
+            user.password_hash,
+        ):
+            raise InvalidUserCredentialsError
+
+        if not user.is_active:
+            raise InactiveUserError
+
+        business = self.business_repository.get_by_id(
+            user.business_id,
+        )
+
+        if business is None:
+            raise UserBusinessNotFoundError
+
+        if not business.is_active:
+            raise UserBusinessInactiveError
 
         return user

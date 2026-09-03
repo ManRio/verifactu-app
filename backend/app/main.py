@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 from app.api.routes.business import router as business_router
 from app.api.routes.user import router as user_router
 from app.db.session import get_db
+from app.api.routes.auth import router as auth_router
 
 app = FastAPI(
     title="Verifactu APP",
     version="0.1.0",
 )
 
+app.include_router(auth_router)
 app.include_router(business_router)
 app.include_router(user_router)
 

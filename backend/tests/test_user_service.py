@@ -1,6 +1,6 @@
 import uuid
-import pytest
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.core.security import verify_password
@@ -8,6 +8,8 @@ from app.domain.business.repository import BusinessRepository
 from app.domain.business.schemas import BusinessCreate
 from app.domain.user.schemas import UserCreate, UserUpdate
 from app.domain.user.service import (
+    InactiveUserError,
+    InvalidUserCredentialsError,
     UserAlreadyExistsError,
     UserBusinessInactiveError,
     UserBusinessNotFoundError,
@@ -50,6 +52,7 @@ def test_create_user(db_session: Session):
         "password123",
         user.password_hash,
     )
+
 
 def test_create_user_fails_when_business_does_not_exist(
     db_session: Session,
@@ -137,6 +140,7 @@ def test_create_user_fails_when_email_already_exists(
 
     with pytest.raises(UserAlreadyExistsError):
         service.create_user(duplicate_user)
+
 
 def test_get_user_by_id(db_session: Session):
     business_repository = BusinessRepository(db_session)
@@ -313,6 +317,7 @@ def test_activate_user(db_session: Session):
     assert activated_user is not None
     assert activated_user.is_active is True
 
+
 def test_deactivate_user_returns_none_when_user_does_not_exist(
     db_session: Session,
 ):
@@ -327,3 +332,158 @@ def test_activate_user_returns_none_when_user_does_not_exist(
     service = UserService(db_session)
 
     assert service.activate_user(999999) is None
+
+
+def test_authenticate_user_success(db_session: Session):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Auth Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Auth 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    created_user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email=f"auth-{uuid.uuid4().hex[:12]}@example.com",
+            password="password123",
+            full_name="Auth User",
+        )
+    )
+
+    authenticated_user = service.authenticate_user(
+        created_user.email,
+        "password123",
+    )
+
+    assert authenticated_user.id == created_user.id
+
+
+def test_authenticate_user_rejects_wrong_password(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Wrong Password SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Password 1",
+            postal_code="41002",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email=f"wrong-{uuid.uuid4().hex[:12]}@example.com",
+            password="password123",
+            full_name="Wrong Password User",
+        )
+    )
+
+    with pytest.raises(InvalidUserCredentialsError):
+        service.authenticate_user(
+            user.email,
+            "incorrect-password",
+        )
+
+
+def test_authenticate_user_rejects_unknown_email(
+    db_session: Session,
+):
+    service = UserService(db_session)
+
+    with pytest.raises(InvalidUserCredentialsError):
+        service.authenticate_user(
+            "missing@example.com",
+            "password123",
+        )
+
+
+def test_authenticate_user_rejects_inactive_user(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Inactive User Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Inactive User 1",
+            postal_code="41003",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email=f"inactive-{uuid.uuid4().hex[:12]}@example.com",
+            password="password123",
+            full_name="Inactive User",
+        )
+    )
+
+    service.deactivate_user(user.id)
+
+    with pytest.raises(InactiveUserError):
+        service.authenticate_user(
+            user.email,
+            "password123",
+        )
+
+
+def test_authenticate_user_rejects_inactive_business(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Inactive Business Auth SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Inactive Business 1",
+            postal_code="41004",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email=(
+                f"business-inactive-"
+                f"{uuid.uuid4().hex[:12]}@example.com"
+            ),
+            password="password123",
+            full_name="Inactive Business User",
+        )
+    )
+
+    business.is_active = False
+    db_session.flush()
+
+    with pytest.raises(UserBusinessInactiveError):
+        service.authenticate_user(
+            user.email,
+            "password123",
+        )
