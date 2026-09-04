@@ -1,11 +1,11 @@
 # VeriFactu App
 
-Aplicación web de facturación orientada a pequeños negocios y autónomos, desarrollada como proyecto de portfolio con una arquitectura preparada para incorporar los requisitos de **VERI*FACTU**.
+Aplicación web de facturación orientada a pequeños negocios y autónomos, desarrollada como proyecto de portfolio con una arquitectura preparada para incorporar los requisitos de **VERI\*FACTU**.
 
 El objetivo es construir una solución ligera y mantenible para negocios que necesitan gestionar productos, clientes y facturas sin recurrir a un ERP o CRM de gran tamaño.
 
 > [!IMPORTANT]
-> Este proyecto está actualmente en desarrollo y **no debe considerarse todavía una implementación conforme con VERI*FACTU**.
+> Este proyecto está actualmente en desarrollo y **no debe considerarse todavía una implementación conforme con VERI\*FACTU**.
 >
 > La integración definitiva deberá implementarse y validarse contra las especificaciones técnicas vigentes de la AEAT.
 
@@ -42,7 +42,7 @@ Actualmente están implementadas las bases de:
 La suite automatizada cuenta actualmente con:
 
 ```text
-89 passed
+91 passed
 ```
 
 Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
@@ -51,7 +51,7 @@ Existe además un warning conocido relacionado con la integración entre `Starle
 
 ## Objetivo del proyecto
 
-VeriFactu App pretende cubrir las necesidades básicas de facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura preparada para evolucionar hacia una integración completa con VERI*FACTU.
+VeriFactu App pretende cubrir las necesidades básicas de facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura preparada para evolucionar hacia una integración completa con VERI\*FACTU.
 
 El MVP contempla:
 
@@ -74,7 +74,7 @@ El MVP contempla:
 - envío de registros a la AEAT;
 - almacenamiento de respuestas e incidencias;
 - verificación de la cadena de registros;
-- dashboard básico de facturación y estado VERI*FACTU.
+- dashboard básico de facturación y estado VERI\*FACTU.
 
 ---
 
@@ -198,7 +198,7 @@ pero no realizan `commit()`.
 
 El límite de la transacción pertenece a la capa de servicio.
 
-Esta decisión es especialmente importante para futuras operaciones de facturación y VERI*FACTU, donde varias operaciones deberán ejecutarse de forma atómica.
+Esta decisión es especialmente importante para futuras operaciones de facturación y VERI\*FACTU, donde varias operaciones deberán ejecutarse de forma atómica.
 
 ---
 
@@ -674,13 +674,13 @@ Actualmente están implementadas las siguientes medidas:
 - rechazo de usuarios inactivos;
 - rechazo de usuarios pertenecientes a empresas inactivas;
 - errores HTTP genéricos durante autenticación;
+- mitigación de diferencias temporales para usuarios inexistentes mediante verificación Argon2 ficticia;
 - normalización consistente del email;
 - unicidad case-insensitive del email en PostgreSQL;
 - aislamiento inicial por tenant.
 
 Todavía quedan medidas de seguridad por implementar, entre ellas:
 
-- mitigación de diferencias temporales durante autenticación;
 - protección completa de endpoints Business;
 - protección completa de endpoints User;
 - aislamiento cross-tenant completo;
@@ -704,7 +704,7 @@ pytest -q
 Estado actual:
 
 ```text
-89 passed, 1 warning
+91 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -827,7 +827,7 @@ uvicorn app.main:app --reload
 
 ---
 
-# Principios de diseño para VERI*FACTU
+# Principios de diseño para VERI\*FACTU
 
 La futura implementación de registros de facturación seguirá varios principios importantes.
 
@@ -958,7 +958,7 @@ y no números de coma flotante.
 - [x] unicidad case-insensitive en PostgreSQL
 - [x] índice funcional `lower(email)`
 - [x] sincronización SQLAlchemy/Alembic/PostgreSQL
-- [ ] mitigación temporal en login
+- [x] mitigación temporal en login
 - [ ] registro/bootstrap inicial
 
 ## Fase 4 — Autorización y tenants
@@ -1007,7 +1007,7 @@ y no números de coma flotante.
 - [ ] QR
 - [ ] tests de concurrencia
 
-## Fase 8 — VERI*FACTU
+## Fase 8 — VERI\*FACTU
 
 - [ ] BillingRecord
 - [ ] ALTA
@@ -1036,7 +1036,7 @@ y no números de coma flotante.
 - [ ] productos
 - [ ] clientes
 - [ ] facturas
-- [ ] estado VERI*FACTU
+- [ ] estado VERI\*FACTU
 
 ---
 
@@ -1046,13 +1046,12 @@ El siguiente bloque de trabajo se centrará en completar la seguridad y el aisla
 
 Prioridades:
 
-1. mitigar diferencias temporales en el proceso de login;
-2. diseñar e implementar el flujo de registro/bootstrap;
-3. proteger el resto de endpoints Business;
-4. proteger los endpoints User;
-5. completar los tests de aislamiento cross-tenant;
-6. cerrar la fase de autenticación/autorización;
-7. comenzar el dominio Product.
+1. diseñar e implementar el flujo de registro/bootstrap;
+2. proteger el resto de endpoints Business;
+3. proteger los endpoints User;
+4. completar los tests de aislamiento cross-tenant;
+5. cerrar la fase de autenticación/autorización;
+6. comenzar el dominio Product.
 
 ---
 
@@ -1061,7 +1060,7 @@ Prioridades:
 En el checkpoint actual:
 
 ```text
-Tests:          89 passed
+Tests:          91 passed
 Alembic:        synchronized
 Database head:  666e0bbbf372
 Email identity: case-insensitive

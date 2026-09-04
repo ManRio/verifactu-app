@@ -1,7 +1,11 @@
 from sqlalchemy.orm import Session
 
 from app.core.identity import normalize_email
-from app.core.security import hash_password, verify_password
+from app.core.security import (
+    hash_password,
+    verify_dummy_password,
+    verify_password,
+)
 from app.domain.business.repository import BusinessRepository
 from app.domain.user.model import User
 from app.domain.user.repository import UserRepository
@@ -190,6 +194,7 @@ class UserService:
         )
 
         if user is None:
+            verify_dummy_password(password)
             raise InvalidUserCredentialsError
 
         if not verify_password(

@@ -661,3 +661,33 @@ def test_get_by_email_accepts_different_case(
     assert found_user is not None
     assert found_user.id == created_user.id
     assert found_user.email == "lookup@example.com"
+
+def test_authenticate_nonexistent_user_runs_dummy_password_verification(
+    db_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    service = UserService(db_session)
+
+    dummy_verification_called = False
+
+    def fake_verify_dummy_password(
+        plain_password: str,
+    ) -> None:
+        nonlocal dummy_verification_called
+
+        dummy_verification_called = True
+
+        assert plain_password == "password123"
+
+    monkeypatch.setattr(
+        "app.domain.user.service.verify_dummy_password",
+        fake_verify_dummy_password,
+    )
+
+    with pytest.raises(InvalidUserCredentialsError):
+        service.authenticate_user(
+            "nonexistent@example.com",
+            "password123",
+        )
+
+    assert dummy_verification_called is True

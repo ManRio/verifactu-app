@@ -54,3 +54,10 @@ def test_decode_access_token_rejects_expired_token():
         match="Invalid access token",
     ):
         decode_access_token(token)
+
+def test_verify_dummy_password_does_not_raise():
+    from app.core.security import verify_dummy_password
+
+    verify_dummy_password(
+        "any-password"
+    )

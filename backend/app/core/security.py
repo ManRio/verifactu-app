@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import jwt
 from jwt import InvalidTokenError
@@ -6,8 +6,8 @@ from pwdlib import PasswordHash
 
 from app.core.config import settings
 
-
 password_hash = PasswordHash.recommended()
+DUMMY_PASSWORD_HASH = password_hash.hash("dummy-password-for-timing-mitigation")
 
 def hash_password(password: str) -> str:
     return password_hash.hash(password)
@@ -25,7 +25,7 @@ def create_access_token(
     subject: str,
     expires_delta: timedelta | None = None,
 ) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     expire = now + (
         expires_delta
@@ -57,3 +57,11 @@ def decode_access_token(token: str) -> dict:
         )
     except InvalidTokenError as exc:
         raise ValueError("Invalid access token") from exc
+
+def verify_dummy_password(
+    plain_password: str,
+) -> None:
+    password_hash.verify(
+        plain_password,
+        DUMMY_PASSWORD_HASH,
+    )
