@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.authorization import ensure_same_business
+from app.api.dependencies.tenant import get_current_business_id
 from app.db.session import get_db
+from app.domain.business.model import Business
 from app.domain.business.schemas import (
     BusinessCreate,
     BusinessRead,
     BusinessUpdate,
 )
-from app.domain.business.service import (
-    BusinessAlreadyExistsError,
-    BusinessService
-)
+from app.domain.business.service import BusinessAlreadyExistsError, BusinessService
 
 router = APIRouter(
     prefix= "/businesses",
@@ -53,16 +53,23 @@ def list_businesses(
 )
 def get_business(
     business_id: int,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
     db: Session = Depends(get_db),
-):
-    service = BusinessService(db)
+) -> Business:
+    ensure_same_business(
+        current_business_id=current_business_id,
+        resource_business_id=business_id,
+    )
 
+    service = BusinessService(db)
     business = service.get_business(business_id)
 
     if business is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found.",
+            detail="Business not found",
         )
 
     return business

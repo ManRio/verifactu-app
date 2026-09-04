@@ -1,223 +1,131 @@
 # VeriFactu App
 
-Aplicación web de facturación ligera orientada a autónomos, pequeños comercios y pequeñas empresas en España, diseñada con una arquitectura preparada para incorporar los requisitos de **VERI\*FACTU**.
+Aplicación web de facturación orientada a pequeños negocios y autónomos, desarrollada como proyecto de portfolio con una arquitectura preparada para incorporar los requisitos de **VERI*FACTU**.
 
-> **Estado del proyecto:** en desarrollo.  
-> La aplicación todavía **no debe considerarse un sistema VERI\*FACTU conforme**. La integración y validación completa con las especificaciones técnicas vigentes de la AEAT forma parte de fases posteriores del proyecto.
+El objetivo es construir una solución ligera y mantenible para negocios que necesitan gestionar productos, clientes y facturas sin recurrir a un ERP o CRM de gran tamaño.
 
----
-
-## 🎯 Objetivo
-
-El objetivo de VeriFactu App es construir una solución de facturación sencilla para negocios que necesitan gestionar usuarios, productos, clientes y facturas sin recurrir a un ERP o CRM complejo.
-
-El proyecto busca combinar:
-
-- Una interfaz sencilla y moderna.
-- Una API REST estructurada.
-- Persistencia en PostgreSQL.
-- Gestión de usuarios y autenticación segura.
-- Gestión segura de facturas y numeración.
-- Registros de facturación inmutables.
-- Encadenamiento criptográfico.
-- Generación de QR.
-- Preparación para la comunicación con los servicios de la AEAT.
-- Trazabilidad de envíos, errores y correcciones.
-
-El proyecto se desarrolla también como proyecto de portfolio, prestando especial atención a arquitectura, separación de responsabilidades, calidad de código, testing y buenas prácticas.
+> [!IMPORTANT]
+> Este proyecto está actualmente en desarrollo y **no debe considerarse todavía una implementación conforme con VERI*FACTU**.
+>
+> La integración definitiva deberá implementarse y validarse contra las especificaciones técnicas vigentes de la AEAT.
 
 ---
 
-## 🚧 Estado actual
+## Estado actual
 
-Actualmente se encuentra implementada la infraestructura base del backend, los dominios **Business** y **User** y una primera capa funcional de **autenticación mediante JWT**.
+El proyecto se encuentra en una fase de desarrollo **backend-first**.
 
-La aplicación permite:
+Actualmente están implementadas las bases de:
 
-- gestionar empresas;
-- gestionar usuarios asociados a empresas;
-- almacenar contraseñas mediante Argon2;
-- autenticar mediante email y contraseña;
-- generar access tokens JWT;
-- validar tokens Bearer;
-- identificar al usuario autenticado;
-- comprobar en cada petición autenticada que el usuario sigue activo;
-- comprobar que su empresa sigue activa;
-- consultar la identidad del usuario mediante `/auth/me`.
+- configuración del backend;
+- conexión con PostgreSQL;
+- migraciones con Alembic;
+- dominio de empresas;
+- ciclo de vida de empresas;
+- dominio de usuarios;
+- relación Business → Users;
+- creación y actualización de usuarios;
+- activación y desactivación de usuarios;
+- hashing seguro de contraseñas;
+- autenticación de usuarios;
+- generación y validación de JWT;
+- endpoint de login;
+- resolución del usuario autenticado mediante Bearer Token;
+- endpoint `/auth/me`;
+- revocación funcional de acceso para usuarios o empresas inactivas;
+- normalización de direcciones de email;
+- búsquedas y autenticación de email sin depender de mayúsculas/minúsculas;
+- unicidad case-insensitive de email en PostgreSQL;
+- fundamentos de autorización y aislamiento por tenant;
+- protección inicial del acceso a empresas por tenant.
 
-La protección de los endpoints de negocio y las reglas de autorización entre empresas todavía no están implementadas.
-
-### Implementado
-
-- FastAPI configurado.
-- PostgreSQL 17 mediante Docker.
-- SQLAlchemy 2.
-- Psycopg.
-- Pydantic.
-- Pydantic Settings.
-- Variables de entorno.
-- Alembic configurado.
-- Sistema de migraciones operativo.
-- Registro centralizado de modelos SQLAlchemy.
-- Patrón Repository.
-- Capa Service.
-- Control transaccional desde Service.
-- Health check de API.
-- Health check de PostgreSQL.
-- Hash de contraseñas mediante Argon2.
-- Verificación de contraseñas.
-- Autenticación mediante email y contraseña.
-- Generación de JWT mediante PyJWT.
-- Validación de JWT.
-- Expiración de access tokens.
-- Autenticación Bearer mediante `HTTPBearer`.
-- Identificación del usuario autenticado.
-- Validación del usuario contra PostgreSQL.
-- Validación de empresa activa durante autenticación.
-- Revocación funcional de acceso mediante estado activo/inactivo.
-- Endpoint `/auth/login`.
-- Endpoint `/auth/me`.
-- Fixtures transaccionales de testing.
-- Tests de Repository.
-- Tests de Service.
-- Tests de seguridad.
-- Tests de dependencias de autenticación.
-- Tests de integración de API.
-- Swagger/OpenAPI mediante FastAPI.
-
----
-
-## 🏢 Dominio Business
-
-Actualmente se encuentra implementado:
-
-- Modelo `Business`.
-- Relación `Business → User`.
-- Creación.
-- Consulta.
-- Listado.
-- Actualización parcial.
-- Identificador fiscal único.
-- Detección previa de identificadores fiscales duplicados.
-- Ciclo de vida activo/inactivo.
-- Activación.
-- Desactivación sin eliminación física.
-- API REST del dominio Business.
-
----
-
-## 👤 Dominio User
-
-Actualmente se encuentra implementado:
-
-- Modelo `User`.
-- Asociación obligatoria con `Business`.
-- Email globalmente único.
-- Validación de direcciones de email.
-- Creación.
-- Consulta.
-- Actualización parcial.
-- Listado por empresa a nivel Repository/Service.
-- Ciclo de vida activo/inactivo.
-- Activación.
-- Desactivación.
-- Validación de empresa existente.
-- Rechazo de creación para empresas inactivas.
-- Detección previa de emails duplicados.
-- Hash seguro de contraseñas mediante Argon2.
-- Verificación de contraseñas.
-- Autenticación de usuario.
-- Rechazo de usuarios inactivos durante autenticación.
-- Rechazo cuando la empresa está inactiva.
-- API REST del dominio User.
-- Exclusión de `password` y `password_hash` de las respuestas HTTP.
-
----
-
-## 🔐 Autenticación
-
-Actualmente se encuentra implementado:
-
-- `LoginRequest`.
-- `TokenResponse`.
-- `AuthService`.
-- `POST /auth/login`.
-- JWT firmado mediante PyJWT.
-- Claims `sub`, `iat` y `exp`.
-- Expiración configurable.
-- `HTTPBearer`.
-- `get_current_user`.
-- `GET /auth/me`.
-- Validación de usuario y empresa en cada petición autenticada.
-- Respuestas `401 Unauthorized` controladas.
-
----
-
-## 🌐 API implementada
+La suite automatizada cuenta actualmente con:
 
 ```text
-GET   /health
-GET   /health/db
-
-POST  /auth/login
-GET   /auth/me
-
-POST  /businesses
-GET   /businesses
-GET   /businesses/{business_id}
-PATCH /businesses/{business_id}
-PATCH /businesses/{business_id}/deactivate
-PATCH /businesses/{business_id}/activate
-
-POST  /users
-GET   /users/{user_id}
-PATCH /users/{user_id}
-PATCH /users/{user_id}/deactivate
-PATCH /users/{user_id}/activate
+89 passed
 ```
 
-Actualmente no existe un endpoint global:
-
-```text
-GET /users
-```
-
-Los usuarios pertenecen a una empresa y el listado HTTP por empresa se expondrá cuando se definan las reglas de autorización correspondientes.
-
-Los endpoints de `Business` y `User` todavía no están protegidos mediante JWT.
+Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
 
 ---
 
-## 🧱 Stack tecnológico
+## Objetivo del proyecto
 
-### Backend
+VeriFactu App pretende cubrir las necesidades básicas de facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura preparada para evolucionar hacia una integración completa con VERI*FACTU.
+
+El MVP contempla:
+
+- gestión de cuenta y negocio;
+- gestión de usuarios;
+- autenticación y autorización;
+- gestión de productos;
+- gestión de clientes;
+- impuestos y precios;
+- facturas completas y simplificadas;
+- numeración de facturas;
+- generación de PDF;
+- generación de QR;
+- generación de registros de facturación;
+- encadenamiento de registros;
+- cálculo de hash según la especificación aplicable;
+- registros de alta;
+- anulación;
+- rectificación y subsanación;
+- envío de registros a la AEAT;
+- almacenamiento de respuestas e incidencias;
+- verificación de la cadena de registros;
+- dashboard básico de facturación y estado VERI*FACTU.
+
+---
+
+## Fuera del alcance inicial
+
+El objetivo no es construir un ERP completo.
+
+Quedan fuera del MVP:
+
+- contabilidad completa;
+- conciliación bancaria;
+- nóminas;
+- gestión avanzada de proveedores;
+- compras;
+- múltiples almacenes;
+- TPV físico;
+- comercio electrónico;
+- CRM avanzado;
+- analítica compleja;
+- multiidioma;
+- multimoneda;
+- soporte inicial para todos los regímenes especiales de IVA.
+
+---
+
+# Stack tecnológico
+
+## Backend
 
 - Python 3.13
 - FastAPI
-- Uvicorn
+- SQLAlchemy 2
+- PostgreSQL
+- Alembic
 - Pydantic
 - Pydantic Settings
-- Email Validator
-- SQLAlchemy 2
-- Alembic
 - Psycopg
-- PostgreSQL 17
+- PyJWT
 - pwdlib
 - Argon2
-- PyJWT
 - Pytest
 - Ruff
 
-### Infraestructura
+## Infraestructura de desarrollo
 
 - Docker
 - Docker Compose
-- Git
-- GitHub
 
-### Frontend previsto
+## Frontend previsto
 
-El frontend todavía no se ha iniciado.
+El frontend se desarrollará en una fase posterior.
 
 Stack previsto:
 
@@ -226,7 +134,7 @@ Stack previsto:
 - Vite
 - Tailwind CSS
 
-Podrán incorporarse posteriormente herramientas como:
+Se valorará además el uso de:
 
 - TanStack Query
 - React Hook Form
@@ -234,28 +142,23 @@ Podrán incorporarse posteriormente herramientas como:
 
 ---
 
-## 🏗️ Arquitectura
+# Arquitectura
 
-El backend evita concentrar lógica de negocio y persistencia en los endpoints de FastAPI.
-
-La arquitectura separa responsabilidades:
+El backend sigue una separación por responsabilidades.
 
 ```text
-HTTP Request
-     │
-     ▼
 FastAPI Router
-     │
-     ▼
+      │
+      ▼
 Service
-     │
-     ▼
+      │
+      ▼
 Repository
-     │
-     ▼
+      │
+      ▼
 SQLAlchemy
-     │
-     ▼
+      │
+      ▼
 PostgreSQL
 ```
 
@@ -263,686 +166,130 @@ PostgreSQL
 
 Responsable del contrato HTTP:
 
-- recibir requests;
-- validar datos de entrada;
-- devolver códigos HTTP;
-- transformar errores de negocio en respuestas HTTP;
-- serializar respuestas públicas.
+- rutas;
+- parámetros;
+- códigos de estado;
+- serialización;
+- dependencias;
+- autenticación;
+- autorización HTTP.
 
 ### Service
 
 Responsable de:
 
 - reglas de negocio;
-- coordinación de operaciones;
-- control de límites transaccionales;
+- validaciones de dominio;
 - coordinación entre repositorios;
-- ejecución de `commit`.
-
-Ejemplo de creación de usuario:
-
-```text
-UserService
-   │
-   ├── BusinessRepository
-   │      └── comprobar empresa
-   │
-   ├── UserRepository
-   │      └── comprobar email
-   │
-   ├── hash_password()
-   │      └── Argon2
-   │
-   └── commit
-```
-
-Ejemplo de autenticación:
-
-```text
-LoginRequest
-     │
-     ▼
-AuthService
-     │
-     ▼
-UserService.authenticate_user()
-     │
-     ├── comprobar usuario
-     ├── verificar contraseña
-     ├── comprobar usuario activo
-     └── comprobar empresa activa
-     │
-     ▼
-create_access_token()
-     │
-     ▼
-TokenResponse
-```
+- límites de transacción.
 
 ### Repository
 
-Responsable exclusivamente del acceso a datos:
+Responsable exclusivamente del acceso a datos.
 
-- consultas;
-- inserciones;
-- modificaciones;
-- acceso mediante SQLAlchemy.
+Los repositorios utilizan:
 
-Los repositories utilizan operaciones como:
-
-```text
+```python
 flush()
 refresh()
 ```
 
-pero no deciden cuándo realizar el `commit`.
+pero no realizan `commit()`.
 
-Esto será especialmente importante cuando se implemente el proceso de facturación y VERI\*FACTU, donde varias operaciones deberán formar parte de una única transacción.
+El límite de la transacción pertenece a la capa de servicio.
 
----
-
-## 🔐 Arquitectura de autenticación
-
-El flujo de login actual es:
-
-```text
-email + password
-      │
-      ▼
-POST /auth/login
-      │
-      ▼
-AuthService
-      │
-      ▼
-UserService.authenticate_user()
-      │
-      ├── usuario existe
-      ├── contraseña correcta
-      ├── usuario activo
-      └── empresa activa
-      │
-      ▼
-create_access_token()
-      │
-      ▼
-JWT
-      │
-      ├── sub
-      ├── iat
-      └── exp
-```
-
-El flujo de una petición autenticada es:
-
-```text
-Authorization: Bearer <JWT>
-            │
-            ▼
-HTTPBearer
-            │
-            ▼
-get_current_user()
-            │
-            ▼
-decode_access_token()
-            │
-            ▼
-payload["sub"]
-            │
-            ▼
-user_id
-            │
-            ▼
-UserRepository
-            │
-            ├── usuario existe
-            └── usuario activo
-            │
-            ▼
-BusinessRepository
-            │
-            ├── empresa existe
-            └── empresa activa
-            │
-            ▼
-User autenticado
-```
+Esta decisión es especialmente importante para futuras operaciones de facturación y VERI*FACTU, donde varias operaciones deberán ejecutarse de forma atómica.
 
 ---
 
-## 🔑 JWT
-
-Los access tokens se generan mediante:
-
-```text
-PyJWT
-```
-
-La configuración se obtiene de variables de entorno.
-
-Actualmente los tokens contienen:
-
-```text
-sub
-iat
-exp
-```
-
-### `sub`
-
-El claim:
-
-```text
-sub
-```
-
-contiene el identificador del usuario convertido a `str`.
-
-Se utiliza el identificador interno y no el email porque el ID es estable mientras que el email puede modificarse.
-
-### `iat`
-
-Representa el instante de emisión del token.
-
-### `exp`
-
-Representa el instante de expiración.
-
-Actualmente la duración por defecto es:
-
-```text
-30 minutos
-```
-
-y puede modificarse mediante configuración.
-
----
-
-## 🛡️ Validación de access tokens
-
-La validación se realiza mediante:
-
-```text
-decode_access_token()
-```
-
-El sistema rechaza:
-
-- tokens con firma inválida;
-- tokens manipulados;
-- tokens expirados;
-- valores `sub` inválidos;
-- usuarios inexistentes;
-- usuarios inactivos;
-- empresas inexistentes;
-- empresas inactivas.
-
----
-
-## 🔒 Revocación funcional de acceso
-
-Los JWT son stateless y no se almacenan actualmente en la base de datos.
-
-Sin embargo, un token criptográficamente válido no implica automáticamente que siga concediendo acceso.
-
-En cada petición autenticada:
-
-```text
-JWT válido
-   │
-   ▼
-buscar User en PostgreSQL
-   │
-   ▼
-comprobar User.is_active
-   │
-   ▼
-buscar Business
-   │
-   ▼
-comprobar Business.is_active
-```
-
-Por tanto:
-
-```text
-JWT válido ≠ acceso garantizado
-```
-
-Si un usuario es desactivado después de haber obtenido un token, su siguiente petición autenticada devuelve:
-
-```text
-401 Unauthorized
-```
-
-Lo mismo sucede si se desactiva su empresa.
-
-Esto permite revocar funcionalmente el acceso antes de que expire el JWT.
-
----
-
-## 🔐 Errores de autenticación
-
-La API evita revelar información innecesaria sobre las cuentas.
-
-Durante el login, casos como:
-
-- usuario inexistente;
-- contraseña incorrecta;
-- usuario inactivo;
-- empresa inactiva;
-
-se transforman externamente en:
-
-```text
-401 Unauthorized
-```
-
-con:
-
-```json
-{
-  "detail": "Incorrect email or password"
-}
-```
-
-y:
-
-```text
-WWW-Authenticate: Bearer
-```
-
-Durante la validación de un Bearer token se utiliza:
-
-```json
-{
-  "detail": "Could not validate credentials"
-}
-```
-
-también con:
-
-```text
-WWW-Authenticate: Bearer
-```
-
----
-
-## 👤 Usuario autenticado
-
-La dependencia:
-
-```text
-get_current_user()
-```
-
-es responsable de identificar al usuario asociado al JWT.
-
-Actualmente valida:
-
-1. existencia de credenciales Bearer;
-2. validez del JWT;
-3. existencia de `sub`;
-4. conversión de `sub` a ID de usuario;
-5. existencia del usuario;
-6. estado activo del usuario;
-7. existencia de su empresa;
-8. estado activo de la empresa.
-
-Si todas las comprobaciones son correctas devuelve el objeto:
-
-```text
-User
-```
-
-que puede ser inyectado posteriormente en endpoints protegidos mediante `Depends`.
-
----
-
-## 🙋 Endpoint `/auth/me`
-
-El endpoint:
-
-```http
-GET /auth/me
-```
-
-requiere:
-
-```text
-Authorization: Bearer <access_token>
-```
-
-Si la autenticación es correcta devuelve `UserRead`.
-
-Ejemplo conceptual:
-
-```json
-{
-  "id": 1,
-  "business_id": 1,
-  "email": "admin@example.com",
-  "full_name": "Usuario Demo",
-  "is_active": true,
-  "created_at": "...",
-  "updated_at": "..."
-}
-```
-
-Nunca devuelve:
-
-```text
-password
-password_hash
-```
-
-Si el token es inexistente o inválido:
-
-```text
-401 Unauthorized
-```
-
----
-
-## ⚠️ Autenticación no equivale a autorización
-
-Actualmente la aplicación puede identificar correctamente al usuario autenticado.
-
-Sin embargo, todavía no se han implementado las reglas que determinen:
-
-```text
-qué recursos puede utilizar ese usuario
-```
-
-Por ejemplo, antes de proteger los endpoints existentes será necesario impedir que un usuario perteneciente a:
-
-```text
-Business A
-```
-
-pueda consultar o modificar datos pertenecientes a:
-
-```text
-Business B
-```
-
-Por tanto, el siguiente bloque deberá diseñar explícitamente:
-
-- autorización;
-- aislamiento entre empresas;
-- acceso a recursos propios;
-- reglas de administración;
-- estrategia de registro/bootstrap inicial.
-
-No se protegerán indiscriminadamente los endpoints sin definir primero estas reglas.
-
----
-
-## 📁 Estructura actual
+# Estructura actual
 
 ```text
 verifactu-app/
 │
-├── backend/
-│   ├── alembic/
-│   │   ├── versions/
-│   │   │   ├── f59baa15a544_initial_migration.py
-│   │   │   ├── 4edaea57d404_create_businesses_table.py
-│   │   │   ├── e4eb415b0211_add_is_active_to_businesses.py
-│   │   │   └── a23de07e7fb2_create_users_table.py
-│   │   ├── env.py
-│   │   └── script.py.mako
-│   │
-│   ├── app/
-│   │   ├── api/
-│   │   │   ├── dependencies/
-│   │   │   │   ├── __init__.py
-│   │   │   │   └── auth.py
-│   │   │   │
-│   │   │   └── routes/
-│   │   │       ├── auth.py
-│   │   │       ├── business.py
-│   │   │       └── user.py
-│   │   │
-│   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   └── security.py
-│   │   │
-│   │   ├── db/
-│   │   │   ├── base.py
-│   │   │   ├── models.py
-│   │   │   └── session.py
-│   │   │
-│   │   ├── domain/
-│   │   │   ├── auth/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── service.py
-│   │   │   │
-│   │   │   ├── business/
-│   │   │   │   ├── model.py
-│   │   │   │   ├── repository.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── service.py
-│   │   │   │
-│   │   │   └── user/
-│   │   │       ├── model.py
-│   │   │       ├── repository.py
-│   │   │       ├── schemas.py
-│   │   │       └── service.py
-│   │   │
-│   │   └── main.py
-│   │
-│   ├── tests/
-│   │   ├── conftest.py
-│   │   ├── test_auth_api.py
-│   │   ├── test_auth_dependencies.py
-│   │   ├── test_auth_service.py
-│   │   ├── test_business_api.py
-│   │   ├── test_business_repository.py
-│   │   ├── test_business_service.py
-│   │   ├── test_health.py
-│   │   ├── test_security.py
-│   │   ├── test_user_api.py
-│   │   ├── test_user_repository.py
-│   │   └── test_user_service.py
-│   │
-│   ├── alembic.ini
-│   └── pyproject.toml
-│
-├── frontend/
-├── docs/
+├── .env
 ├── .env.example
 ├── .gitignore
 ├── docker-compose.yml
-└── README.md
+├── README.md
+│
+└── backend/
+    │
+    ├── alembic/
+    │   ├── env.py
+    │   └── versions/
+    │       ├── f59baa15a544_initial_migration.py
+    │       ├── 4edaea57d404_create_businesses_table.py
+    │       ├── e4eb415b0211_add_is_active_to_businesses.py
+    │       ├── a23de07e7fb2_create_users_table.py
+    │       └── 666e0bbbf372_enforce_case_insensitive_user_email_.py
+    │
+    ├── app/
+    │   ├── api/
+    │   │   ├── dependencies/
+    │   │   │   ├── auth.py
+    │   │   │   ├── authorization.py
+    │   │   │   └── tenant.py
+    │   │   └── routes/
+    │   │       ├── auth.py
+    │   │       ├── business.py
+    │   │       └── user.py
+    │   │
+    │   ├── core/
+    │   │   ├── config.py
+    │   │   ├── identity.py
+    │   │   └── security.py
+    │   │
+    │   ├── db/
+    │   │   ├── base.py
+    │   │   ├── models.py
+    │   │   └── session.py
+    │   │
+    │   ├── domain/
+    │   │   ├── auth/
+    │   │   │   ├── schemas.py
+    │   │   │   └── service.py
+    │   │   │
+    │   │   ├── business/
+    │   │   │   ├── model.py
+    │   │   │   ├── repository.py
+    │   │   │   ├── schemas.py
+    │   │   │   └── service.py
+    │   │   │
+    │   │   └── user/
+    │   │       ├── model.py
+    │   │       ├── repository.py
+    │   │       ├── schemas.py
+    │   │       └── service.py
+    │   │
+    │   └── main.py
+    │
+    ├── tests/
+    │   ├── conftest.py
+    │   ├── test_auth_api.py
+    │   ├── test_authorization_dependencies.py
+    │   ├── test_business_api.py
+    │   ├── test_business_repository.py
+    │   ├── test_business_service.py
+    │   ├── test_health.py
+    │   ├── test_identity.py
+    │   ├── test_security.py
+    │   ├── test_tenant_dependencies.py
+    │   ├── test_user_api.py
+    │   ├── test_user_repository.py
+    │   └── test_user_service.py
+    │
+    ├── alembic.ini
+    └── pyproject.toml
 ```
 
 ---
 
-## 🏢 Dominio Business
+# Configuración
 
-`Business` representa la empresa o negocio emisor que utilizará la aplicación.
+La configuración se gestiona mediante `pydantic-settings`.
 
-Actualmente almacena:
-
-- razón social;
-- identificador fiscal;
-- nombre comercial;
-- dirección;
-- código postal;
-- ciudad;
-- provincia;
-- código de país;
-- estado activo/inactivo;
-- fecha de creación;
-- fecha de actualización.
-
-Una empresa puede tener múltiples usuarios asociados.
-
-La relación es:
-
-```text
-Business 1 ─────────── N User
-```
-
-El identificador fiscal:
-
-```text
-tax_id
-```
-
-tiene una restricción de unicidad en PostgreSQL.
-
-La capa Service también detecta duplicados previamente para transformar el caso en:
-
-```text
-409 Conflict
-```
-
-La restricción de PostgreSQL permanece como garantía final de integridad.
-
-### Ciclo de vida
-
-El ciclo de vida se gestiona mediante:
-
-```text
-is_active
-```
-
-Las empresas se crean activas y pueden desactivarse y reactivarse.
-
-La desactivación no elimina el registro.
-
-Las operaciones son explícitas:
-
-```text
-deactivate_business()
-activate_business()
-```
-
-Esto permitirá mantener posteriormente las referencias históricas y fiscales.
-
----
-
-## 👤 Dominio User
-
-`User` representa un usuario asociado a una empresa.
-
-Cada usuario pertenece obligatoriamente a una única empresa mediante:
-
-```text
-business_id
-```
-
-Actualmente almacena:
-
-- identificador;
-- empresa asociada;
-- email;
-- hash de contraseña;
-- nombre completo;
-- estado activo/inactivo;
-- fecha de creación;
-- fecha de actualización.
-
-### Email
-
-El email es globalmente único en el MVP.
-
-Esto permite utilizar:
-
-```text
-email + password
-```
-
-como credenciales de autenticación.
-
-Las direcciones se validan mediante:
-
-```text
-EmailStr
-```
-
-La unicidad está protegida mediante PostgreSQL y mediante comprobación previa en Service.
-
-### Contraseñas
-
-Las contraseñas en texto plano únicamente se utilizan como datos de entrada.
-
-Antes de persistir:
-
-```text
-password
-   │
-   ▼
-Argon2
-   │
-   ▼
-password_hash
-```
-
-La base de datos almacena exclusivamente:
-
-```text
-password_hash
-```
-
-Ni `password` ni `password_hash` forman parte de:
-
-```text
-UserRead
-```
-
-### Reglas de creación
-
-Antes de crear un usuario, `UserService` comprueba:
-
-1. que la empresa exista;
-2. que esté activa;
-3. que el email no esté registrado.
-
-Después genera el hash y persiste el usuario.
-
-### Ciclo de vida
-
-Los usuarios utilizan:
-
-```text
-is_active
-```
-
-Las operaciones son:
-
-```text
-deactivate_user()
-activate_user()
-```
-
-La contraseña no se modifica mediante `UserUpdate`.
-
-El cambio de contraseña se implementará posteriormente como una operación específica.
-
----
-
-## 🔐 Variables de entorno
-
-Las credenciales reales y claves criptográficas no deben almacenarse en Git.
-
-El proyecto utiliza:
-
-```text
-.env
-```
-
-en la raíz del proyecto y excluido mediante `.gitignore`.
-
-Para configurar un entorno nuevo se utiliza:
-
-```text
-.env.example
-```
+Las variables de entorno se encuentran en un archivo `.env` situado en la raíz del proyecto.
 
 Ejemplo:
 
@@ -958,338 +305,397 @@ JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-`JWT_SECRET_KEY` debe sustituirse por una clave aleatoria segura.
+El archivo `.env` no debe incluirse en Git.
 
-Puede generarse mediante:
-
-```powershell
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Nunca deben almacenarse secretos reales en el repositorio.
+El repositorio contiene `.env.example` como referencia para configurar un entorno local.
 
 ---
 
-## 🗄️ Base de datos
+# Base de datos
 
-La aplicación utiliza PostgreSQL 17 mediante Docker Compose.
+El proyecto utiliza PostgreSQL.
+
+Durante el desarrollo se ejecuta mediante Docker Compose.
 
 Configuración actual:
 
 ```text
 Database: verifactu
-User:     verifactu
-Host:     localhost
-Port:     55732
+User: verifactu
+Container: verifactu-postgres
+Host port: 55732
+Container port: 5432
 ```
 
-El puerto interno del contenedor es:
-
-```text
-5432
-```
-
-Las tablas implementadas actualmente son:
-
-```text
-businesses
-users
-```
-
-La relación se establece mediante:
-
-```text
-users.business_id → businesses.id
-```
-
----
-
-## ⚙️ Instalación del backend
-
-### 1. Clonar
-
-```bash
-git clone <repository-url>
-cd verifactu-app/backend
-```
-
-### 2. Crear entorno virtual
-
-```powershell
-python -m venv .venv
-```
-
-### 3. Activar
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-### 4. Instalar dependencias
-
-```powershell
-pip install -e ".[dev]"
-```
-
-### 5. Configurar entorno
-
-Crear:
-
-```text
-.env
-```
-
-en la raíz tomando como referencia:
-
-```text
-.env.example
-```
-
-### 6. Iniciar PostgreSQL
-
-Desde la raíz:
+Para iniciar PostgreSQL:
 
 ```powershell
 docker compose up -d
 ```
 
-Comprobar:
+Para comprobar el estado:
 
 ```powershell
-docker ps
+docker compose ps
 ```
 
-### 7. Migraciones
+---
 
-Desde `backend`:
+# Alembic
+
+Alembic gestiona la evolución del esquema de base de datos.
+
+Migraciones actuales:
+
+```text
+f59baa15a544_initial_migration.py
+4edaea57d404_create_businesses_table.py
+e4eb415b0211_add_is_active_to_businesses.py
+a23de07e7fb2_create_users_table.py
+666e0bbbf372_enforce_case_insensitive_user_email_.py
+```
+
+La revisión actual es:
+
+```text
+666e0bbbf372 (head)
+```
+
+Para aplicar las migraciones:
 
 ```powershell
 alembic upgrade head
 ```
 
-### 8. Iniciar FastAPI
+Para comprobar la revisión:
 
 ```powershell
-uvicorn app.main:app --reload
+alembic current
 ```
 
-API:
+Para comprobar que los modelos SQLAlchemy y el esquema gestionado por Alembic están sincronizados:
 
-```text
-http://127.0.0.1:8000
+```powershell
+alembic check
 ```
 
-Swagger:
+Estado actual:
 
 ```text
-http://127.0.0.1:8000/docs
-```
-
-OpenAPI:
-
-```text
-http://127.0.0.1:8000/openapi.json
+No new upgrade operations detected.
 ```
 
 ---
 
-## 🩺 Health checks
+# Dominio Business
 
-### API
+Una empresa representa el tenant principal de la aplicación.
 
-```http
-GET /health
+Campos actuales:
+
+```text
+id
+legal_name
+tax_id
+trade_name
+address
+postal_code
+city
+province
+country_code
+is_active
+created_at
+updated_at
 ```
 
-Respuesta:
+Una empresa puede tener múltiples usuarios.
 
-```json
-{
-  "status": "ok"
-}
+```text
+Business
+   │
+   └── Users
 ```
 
-### PostgreSQL
+El ciclo de vida utiliza desactivación lógica.
 
-```http
-GET /health/db
-```
-
-Respuesta esperada:
-
-```json
-{
-  "status": "ok",
-  "database": 1
-}
-```
+No se realiza borrado físico ordinario porque la futura información fiscal y de facturación debe conservar trazabilidad.
 
 ---
 
-## 🔐 API Auth
+# Dominio User
 
-### Login
-
-```http
-POST /auth/login
-```
-
-Body:
-
-```json
-{
-  "email": "admin@example.com",
-  "password": "password123"
-}
-```
-
-Respuesta correcta:
+Cada usuario pertenece exactamente a una empresa mediante:
 
 ```text
-200 OK
+business_id
 ```
 
-```json
-{
-  "access_token": "<jwt>",
-  "token_type": "bearer"
-}
-```
-
-Credenciales inválidas:
+Campos actuales:
 
 ```text
-401 Unauthorized
+id
+business_id
+email
+password_hash
+full_name
+is_active
+created_at
+updated_at
 ```
 
-```json
-{
-  "detail": "Incorrect email or password"
-}
-```
+Las contraseñas nunca se almacenan en texto plano.
 
-### Usuario actual
+El hashing se realiza mediante Argon2 utilizando `pwdlib`.
 
-```http
-GET /auth/me
-```
+Los usuarios pueden:
 
-Header:
-
-```text
-Authorization: Bearer <access_token>
-```
-
-Respuesta:
-
-```text
-200 OK
-```
-
-El contenido utiliza el schema:
-
-```text
-UserRead
-```
-
-Si el token no puede validarse:
-
-```text
-401 Unauthorized
-```
+- crearse;
+- consultarse;
+- actualizarse;
+- activarse;
+- desactivarse;
+- autenticarse.
 
 ---
 
-## 🏢 API Business
+# Normalización e identidad del email
 
-### Crear
+El email funciona como identificador global de usuario para el MVP.
 
-```http
-POST /businesses
+Antes de persistirlo o utilizarlo en operaciones de identidad se normaliza mediante:
+
+```python
+email.strip().lower()
 ```
 
-### Listar
+La normalización se aplica actualmente en:
 
-```http
-GET /businesses
+- creación de usuario;
+- actualización del email;
+- búsqueda mediante `UserService.get_by_email()`;
+- autenticación.
+
+Por tanto, operaciones como:
+
+```text
+user@example.com
+USER@EXAMPLE.COM
+User@Example.Com
 ```
 
-### Consultar
+se consideran equivalentes dentro de la aplicación.
 
-```http
+La base de datos refuerza esta regla mediante un índice funcional único de PostgreSQL:
+
+```sql
+lower(email)
+```
+
+La estructura lógica es:
+
+```text
+ix_users_email
+    índice normal
+    unique = false
+
+uq_users_email_lower
+    índice funcional
+    lower(email)
+    unique = true
+```
+
+El modelo SQLAlchemy declara explícitamente este índice funcional, manteniendo sincronizados:
+
+```text
+SQLAlchemy
+Alembic
+PostgreSQL
+```
+
+`alembic check` confirma actualmente que no existen operaciones de actualización pendientes.
+
+---
+
+# Autenticación
+
+La autenticación utiliza JWT.
+
+Configuración actual:
+
+```text
+Algorithm: HS256
+Access token expiration: 30 minutes
+```
+
+Los tokens incluyen:
+
+```text
+sub
+iat
+exp
+```
+
+`sub` contiene el identificador del usuario como string.
+
+El endpoint de login recibe JSON.
+
+Por esta razón se utiliza `HTTPBearer` para resolver las credenciales de las peticiones autenticadas, en lugar de anunciar un flujo OAuth2 Password basado en formulario.
+
+---
+
+# Resolución del usuario autenticado
+
+La dependencia `get_current_user`:
+
+1. obtiene el Bearer Token;
+2. valida el JWT;
+3. obtiene `sub`;
+4. convierte `sub` al ID del usuario;
+5. consulta el usuario en PostgreSQL;
+6. comprueba que el usuario existe;
+7. comprueba que está activo;
+8. comprueba que su empresa existe;
+9. comprueba que la empresa está activa.
+
+Esto significa que un JWT válido no garantiza por sí solo acceso permanente.
+
+Si el usuario o su empresa son desactivados, las siguientes peticiones autenticadas dejan de ser válidas aunque el token todavía no haya expirado.
+
+---
+
+# Autorización y aislamiento por tenant
+
+La autenticación responde a:
+
+```text
+¿Quién es el usuario?
+```
+
+La autorización debe responder a:
+
+```text
+¿Puede este usuario acceder a este recurso?
+```
+
+El tenant autenticado se deriva de:
+
+```python
+current_user.business_id
+```
+
+La aplicación incorpora una dependencia específica para obtener el identificador de la empresa autenticada:
+
+```text
+get_current_business_id
+```
+
+También existe una comprobación central:
+
+```text
+ensure_same_business
+```
+
+Su objetivo es impedir que un usuario acceda a recursos pertenecientes a otra empresa.
+
+Cuando se intenta acceder a un recurso de otro tenant se utiliza:
+
+```text
+404 Not Found
+```
+
+en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
+
+Actualmente se ha iniciado la aplicación de este modelo al endpoint:
+
+```text
 GET /businesses/{business_id}
 ```
 
-### Actualizar
+Un usuario autenticado puede consultar su propia empresa, pero no una empresa perteneciente a otro tenant.
 
-```http
+La protección del resto de endpoints de Business y User se realizará progresivamente durante la siguiente fase.
+
+---
+
+# Endpoints actuales
+
+## Health
+
+```text
+GET /health
+```
+
+## Auth
+
+```text
+POST /auth/login
+GET  /auth/me
+```
+
+## Businesses
+
+```text
+POST  /businesses
+GET   /businesses
+GET   /businesses/{business_id}
 PATCH /businesses/{business_id}
-```
-
-### Desactivar
-
-```http
 PATCH /businesses/{business_id}/deactivate
-```
-
-### Reactivar
-
-```http
 PATCH /businesses/{business_id}/activate
 ```
 
-> Estos endpoints todavía no están protegidos mediante autenticación y autorización.
-
----
-
-## 👤 API User
-
-### Crear
-
-```http
-POST /users
-```
-
-### Consultar
-
-```http
-GET /users/{user_id}
-```
-
-### Actualizar
-
-```http
-PATCH /users/{user_id}
-```
-
-### Desactivar
-
-```http
-PATCH /users/{user_id}/deactivate
-```
-
-### Reactivar
-
-```http
-PATCH /users/{user_id}/activate
-```
-
-La API nunca devuelve:
+Actualmente:
 
 ```text
-password
-password_hash
+GET /businesses/{business_id}
 ```
 
-> Estos endpoints todavía no están protegidos mediante reglas de autorización por empresa.
+ya aplica autenticación y comprobación de tenant.
+
+El resto de endpoints de Business todavía debe integrarse en el modelo definitivo de autorización/bootstrap.
+
+## Users
+
+Las operaciones del dominio User están implementadas, pero la protección completa de sus endpoints por tenant forma parte de la siguiente fase de autorización.
 
 ---
 
-## 🧪 Testing
+# Seguridad
 
-La suite utiliza Pytest.
+Actualmente están implementadas las siguientes medidas:
 
-Ejecutar:
+- contraseñas almacenadas mediante hash;
+- Argon2;
+- JWT firmados;
+- expiración de access tokens;
+- validación de firma;
+- rechazo de tokens expirados;
+- rechazo de tokens manipulados;
+- comprobación del usuario contra la base de datos en cada petición autenticada;
+- rechazo de usuarios inactivos;
+- rechazo de usuarios pertenecientes a empresas inactivas;
+- errores HTTP genéricos durante autenticación;
+- normalización consistente del email;
+- unicidad case-insensitive del email en PostgreSQL;
+- aislamiento inicial por tenant.
+
+Todavía quedan medidas de seguridad por implementar, entre ellas:
+
+- mitigación de diferencias temporales durante autenticación;
+- protección completa de endpoints Business;
+- protección completa de endpoints User;
+- aislamiento cross-tenant completo;
+- flujo seguro de registro/bootstrap;
+- estrategia futura de revocación de sesiones/tokens si fuese necesaria.
+
+---
+
+# Tests
+
+Los tests utilizan `pytest`.
+
+La fixture de base de datos abre una transacción por test y realiza rollback al finalizar, manteniendo aislados los casos de prueba.
+
+Para ejecutar toda la suite:
 
 ```powershell
 pytest -q
@@ -1298,370 +704,390 @@ pytest -q
 Estado actual:
 
 ```text
-77 passed
+89 passed, 1 warning
 ```
 
-Existe actualmente un warning conocido relacionado con `Starlette TestClient` y `httpx`.
+El warning conocido es:
 
-No bloquea la suite y se abordará de forma independiente.
+```text
+StarletteDeprecationWarning:
+Using `httpx` with `starlette.testclient` is deprecated;
+install `httpx2` instead.
+```
 
-### Infraestructura
+No bloquea actualmente el desarrollo y se resolverá de forma separada.
 
-Los tests cubren:
+La suite cubre actualmente, entre otros:
 
-- health check;
-- conexión PostgreSQL;
-- aislamiento transaccional;
-- overrides de `get_db`.
-
-### Business
-
-Se prueba:
-
-- Repository;
-- Service;
-- API;
-- creación;
-- consulta;
-- listado;
-- actualización;
-- duplicados;
-- activación;
-- desactivación;
-- IDs inexistentes.
-
-### User
-
-Se prueba:
-
-- Repository;
-- Service;
-- API;
-- creación;
-- asociación con Business;
-- emails duplicados;
-- empresas inexistentes;
-- empresas inactivas;
-- hashing;
-- verificación de password;
-- actualización;
-- activación;
-- desactivación;
-- no exposición de credenciales.
-
-### JWT
-
-Se prueba:
-
-- creación de token;
-- `sub`;
-- `iat`;
-- `exp`;
-- decodificación;
-- manipulación de token;
-- expiración.
-
-### AuthService
-
-Se prueba:
-
-- autenticación;
-- generación de access token;
-- asociación del token al usuario.
-
-### Login API
-
-Se prueba:
-
-- login correcto;
+- health endpoint;
+- repositorio Business;
+- servicio Business;
+- API Business;
+- ciclo de vida Business;
+- repositorio User;
+- servicio User;
+- API User;
+- hashing de contraseñas;
+- generación y decodificación de JWT;
+- tokens manipulados;
+- tokens expirados;
+- login;
 - credenciales incorrectas;
-- respuesta `401`;
-- `WWW-Authenticate`.
-
-### Dependencias de autenticación
-
-Se prueba `get_current_user` para:
-
-- token válido;
-- ausencia de credenciales;
-- token inválido;
-- `sub` inválido;
-- usuario inexistente;
-- usuario inactivo;
-- empresa inactiva.
-
-### `/auth/me`
-
-Se prueba:
-
-- acceso con Bearer válido;
-- respuesta pública del usuario;
-- ausencia de password;
-- ausencia de password hash;
-- ausencia de token;
-- token inválido;
-- desactivación del usuario después de emitir el token;
-- desactivación de la empresa después de emitir el token.
-
-Los tests de persistencia utilizan transacciones aisladas que se revierten tras cada prueba.
+- usuarios inactivos;
+- empresas inactivas;
+- `/auth/me`;
+- resolución del usuario autenticado;
+- normalización de email;
+- autenticación con distinta capitalización del email;
+- actualización normalizada del email;
+- búsqueda case-insensitive mediante `UserService`;
+- rechazo de emails duplicados con distinta capitalización;
+- resolución del tenant autenticado;
+- autorización same-business;
+- rechazo de acceso cross-tenant;
+- acceso autenticado a la empresa propia.
 
 ---
 
-## 🗃️ Migraciones
+# Ruff
 
-Alembic gestiona el esquema de PostgreSQL.
+Ruff se utiliza para análisis estático y mantenimiento de calidad del código.
 
-Migraciones actuales:
-
-```text
-f59baa15a544  initial migration
-4edaea57d404  create businesses table
-e4eb415b0211  add is_active to businesses
-a23de07e7fb2  create users table
-```
-
-Head actual:
-
-```text
-a23de07e7fb2
-```
-
-Consultar:
+Puede ejecutarse mediante:
 
 ```powershell
-alembic current
+ruff check .
 ```
 
-Crear migración:
+Actualmente existe deuda de lint heredada en algunos archivos históricos y migraciones generadas por Alembic.
+
+Además, la regla `B008` detecta el patrón:
+
+```python
+Depends(...)
+```
+
+utilizado de forma habitual por FastAPI en parámetros de dependencias.
+
+Esta configuración se revisará en una tarea de tooling independiente para evitar mezclar cambios de estilo globales con cambios funcionales.
+
+No se utiliza actualmente un `ruff check . --fix` indiscriminado sobre todo el proyecto.
+
+---
+
+# Desarrollo local
+
+Desde la raíz del proyecto:
 
 ```powershell
-alembic revision --autogenerate -m "description"
+.\backend\.venv\Scripts\Activate.ps1
 ```
 
-Aplicar:
+O desde `backend`:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+Iniciar PostgreSQL:
+
+```powershell
+docker compose up -d
+```
+
+Entrar en backend:
+
+```powershell
+cd backend
+```
+
+Aplicar migraciones:
 
 ```powershell
 alembic upgrade head
 ```
 
-Las migraciones autogeneradas deben revisarse manualmente antes de aplicarse.
+Comprobar sincronización del esquema:
+
+```powershell
+alembic check
+```
+
+Ejecutar tests:
+
+```powershell
+pytest -q
+```
+
+Arrancar FastAPI en desarrollo:
+
+```powershell
+uvicorn app.main:app --reload
+```
 
 ---
 
-## 🧾 VERI\*FACTU
+# Principios de diseño para VERI*FACTU
 
-La arquitectura está siendo diseñada para soportar posteriormente los requisitos asociados a VERI\*FACTU.
+La futura implementación de registros de facturación seguirá varios principios importantes.
 
-Elementos previstos:
+## Inmutabilidad
 
-- registros de facturación de alta;
-- registros de anulación;
-- subsanaciones;
-- encadenamiento;
-- huella/hash;
-- inmutabilidad;
-- QR;
-- generación de formatos requeridos;
-- comunicación con servicios AEAT;
-- almacenamiento de respuestas;
-- trazabilidad;
-- incidencias;
-- verificación de cadena.
+Los registros fiscales emitidos no deberán modificarse como registros ordinarios.
 
-Los registros separarán conceptualmente:
+Las correcciones deberán representarse mediante nuevos registros relacionados con los anteriores.
+
+## Tipos de registro previstos
+
+```text
+ALTA
+ANULACION
+SUBSANACION
+```
+
+## Encadenamiento
+
+Los registros deberán mantener relación con el registro anterior.
+
+La arquitectura prevista contempla:
 
 ```text
 previous_record_id
 ```
 
-para encadenamiento, de:
+para representar la cadena.
+
+## Correcciones
+
+Las relaciones de corrección podrán utilizar:
 
 ```text
 corrects_record_id
 ```
 
-para correcciones o subsanaciones.
+sin sobrescribir el registro original.
 
-La implementación definitiva deberá seguir las **especificaciones técnicas vigentes publicadas por la AEAT** en el momento de su desarrollo.
+## Hash
 
-> Una arquitectura preparada para VERI\*FACTU no implica por sí misma conformidad normativa.
+El hash se calculará exactamente sobre los campos y con el procedimiento definidos por la especificación técnica aplicable.
+
+No se asumirá que el hash corresponde simplemente al XML completo.
+
+## Envíos
+
+Los registros de facturación y los intentos de envío se modelarán por separado.
+
+Está prevista una entidad similar a:
+
+```text
+VerifactuSubmission
+```
+
+para conservar:
+
+- fecha del intento;
+- estado;
+- respuesta;
+- errores;
+- reintentos.
+
+## Concurrencia
+
+La numeración de facturas y el encadenamiento deberán ser seguros frente a concurrencia.
+
+Se utilizarán transacciones PostgreSQL y, cuando sea necesario, mecanismos de bloqueo para impedir:
+
+- números duplicados;
+- saltos provocados por carreras;
+- cadenas inconsistentes.
+
+## Importes
+
+Los importes monetarios utilizarán tipos decimales exactos:
+
+```text
+Decimal
+NUMERIC
+```
+
+y no números de coma flotante.
 
 ---
 
-## 🗺️ Roadmap
+# Roadmap
 
-### Fase 1 — Infraestructura
+## Fase 1 — Infraestructura
 
 - [x] FastAPI
+- [x] configuración mediante `.env`
 - [x] PostgreSQL
 - [x] Docker Compose
 - [x] SQLAlchemy
 - [x] Alembic
-- [x] Pydantic Settings
 - [x] Pytest
-- [x] Health checks
+- [x] Ruff
 
-### Fase 2 — Empresa
+## Fase 2 — Business
 
-- [x] Modelo Business
-- [x] Migraciones
-- [x] Schemas
-- [x] Repository
-- [x] Service
-- [x] POST
-- [x] GET
-- [x] PATCH
-- [x] Listado
-- [x] Activación
-- [x] Desactivación
-- [x] Tests Repository
-- [x] Tests Service
-- [x] Tests API
-- [x] Ciclo de vida
-
-### Fase 3 — Usuarios y autenticación
-
-#### Usuarios
-
-- [x] Modelo User
-- [x] Migración
-- [x] Relación Business/User
-- [x] Schemas
-- [x] Repository
-- [x] Service
-- [x] Creación
-- [x] Consulta
-- [x] Actualización
-- [x] Activación/desactivación
-- [x] Validación email
-- [x] Email único
-- [x] Asociación empresa
-- [x] Validación empresa activa
+- [x] modelo Business
+- [x] schemas
+- [x] repository
+- [x] service
 - [x] API
-- [x] Tests Repository
-- [x] Tests Service
-- [x] Tests API
+- [x] tests
+- [x] activación/desactivación lógica
 
-#### Seguridad y autenticación
+## Fase 3 — User y autenticación
 
-- [x] Argon2
-- [x] Verificación de contraseñas
-- [x] Configuración JWT
-- [x] Generación JWT
-- [x] Validación JWT
-- [x] Expiración
-- [x] Rechazo de tokens manipulados
-- [x] Rechazo de tokens expirados
-- [x] Autenticación de credenciales
-- [x] AuthService
-- [x] Login
-- [x] HTTPBearer
+- [x] modelo User
+- [x] relación Business → Users
+- [x] schemas
+- [x] repository
+- [x] service
+- [x] API
+- [x] hashing Argon2
+- [x] autenticación
+- [x] JWT
+- [x] login
+- [x] Bearer authentication
 - [x] `get_current_user`
 - [x] `/auth/me`
-- [x] Validación de usuario activo
-- [x] Validación de empresa activa
-- [x] Revocación funcional
-- [x] Tests JWT
-- [x] Tests AuthService
-- [x] Tests API Auth
-- [x] Tests dependencia de autenticación
-- [ ] Protección de endpoints Business
-- [ ] Protección de endpoints User
-- [ ] Autorización por empresa
-- [ ] Aislamiento multiempresa
-- [ ] Estrategia de bootstrap/registro inicial
-- [ ] Normalización robusta de email
-- [ ] Hardening frente a enumeración temporal
-- [ ] Cambio de contraseña
-- [ ] Roles/permisos si el dominio los necesita
+- [x] revocación funcional mediante estado de User/Business
+- [x] normalización de email
+- [x] búsqueda y login case-insensitive
+- [x] unicidad case-insensitive en PostgreSQL
+- [x] índice funcional `lower(email)`
+- [x] sincronización SQLAlchemy/Alembic/PostgreSQL
+- [ ] mitigación temporal en login
+- [ ] registro/bootstrap inicial
 
-### Fase 4 — Productos
+## Fase 4 — Autorización y tenants
 
-- [ ] Modelo Product
-- [ ] Impuestos
-- [ ] Precios
-- [ ] CRUD
-- [ ] Tests
+- [x] identidad del tenant mediante `current_user.business_id`
+- [x] dependencia `get_current_business_id`
+- [x] comprobación reutilizable same-business
+- [x] protección inicial de `GET /businesses/{business_id}`
+- [x] test de acceso cross-tenant para Business
+- [ ] proteger listado de Business
+- [ ] proteger actualización de Business
+- [ ] definir activación/desactivación de Business
+- [ ] proteger creación/listado/actualización de User
+- [ ] aislamiento completo entre empresas
+- [ ] batería completa de tests cross-tenant
 
-### Fase 5 — Clientes
+## Fase 5 — Products
 
-- [ ] Modelo Customer
-- [ ] CRUD
-- [ ] Validaciones fiscales
-- [ ] Activación/desactivación
-- [ ] Tests
+- [ ] modelo Product
+- [ ] impuestos
+- [ ] precios
+- [ ] repository
+- [ ] service
+- [ ] API
+- [ ] tests
 
-### Fase 6 — Facturación
+## Fase 6 — Customers
 
-- [ ] Series
-- [ ] Numeración
-- [ ] Factura completa
-- [ ] Factura simplificada
-- [ ] Líneas
-- [ ] Bases
-- [ ] Impuestos
-- [ ] Totales
+- [ ] modelo Customer
+- [ ] repository
+- [ ] service
+- [ ] API
+- [ ] tests
+
+## Fase 7 — Invoicing
+
+- [ ] modelo Invoice
+- [ ] líneas de factura
+- [ ] cálculo de bases imponibles
+- [ ] impuestos
+- [ ] totales
+- [ ] numeración
+- [ ] factura completa
+- [ ] factura simplificada
 - [ ] PDF
+- [ ] QR
+- [ ] tests de concurrencia
 
-### Fase 7 — VERI\*FACTU
+## Fase 8 — VERI*FACTU
 
 - [ ] BillingRecord
 - [ ] ALTA
-- [ ] ANULACIÓN
-- [ ] SUBSANACIÓN
-- [ ] Encadenamiento
-- [ ] Huella/hash según especificación vigente
-- [ ] Inmutabilidad
-- [ ] QR
-- [ ] Mensajes AEAT
-- [ ] Integración AEAT
-- [ ] Historial de envíos
-- [ ] Gestión de respuestas
-- [ ] Tests de integridad
-- [ ] Tests de concurrencia
+- [ ] ANULACION
+- [ ] SUBSANACION
+- [ ] encadenamiento
+- [ ] hash
+- [ ] validación de cadena
+- [ ] XML
+- [ ] integración AEAT
+- [ ] respuestas
+- [ ] reintentos
+- [ ] histórico de envíos
+- [ ] tests de integridad
+- [ ] tests de manipulación
+- [ ] tests de concurrencia
 
-### Fase 8 — Frontend
+## Fase 9 — Frontend
 
 - [ ] React
 - [ ] TypeScript
 - [ ] Vite
 - [ ] Tailwind CSS
-- [ ] Login
-- [ ] Dashboard
-- [ ] Empresas
-- [ ] Productos
-- [ ] Clientes
-- [ ] Facturas
-- [ ] Estado VERI\*FACTU
+- [ ] autenticación
+- [ ] dashboard
+- [ ] productos
+- [ ] clientes
+- [ ] facturas
+- [ ] estado VERI*FACTU
 
 ---
 
-## ⚠️ Alcance
+# Próximos pasos
 
-VeriFactu App pretende ser una aplicación de facturación ligera.
+El siguiente bloque de trabajo se centrará en completar la seguridad y el aislamiento multi-tenant antes de comenzar los dominios funcionales de facturación.
 
-No se plantea inicialmente como:
+Prioridades:
 
-- ERP completo;
-- sistema de contabilidad integral;
-- software de nóminas;
-- conciliación bancaria;
-- CRM avanzado;
-- gestión de múltiples almacenes;
-- plataforma de comercio electrónico.
-
-El objetivo es mantener un producto pequeño, comprensible y mantenible.
+1. mitigar diferencias temporales en el proceso de login;
+2. diseñar e implementar el flujo de registro/bootstrap;
+3. proteger el resto de endpoints Business;
+4. proteger los endpoints User;
+5. completar los tests de aislamiento cross-tenant;
+6. cerrar la fase de autenticación/autorización;
+7. comenzar el dominio Product.
 
 ---
 
-## 📄 Licencia
+# Estado de calidad actual
 
-Licencia pendiente de definir.
+En el checkpoint actual:
+
+```text
+Tests:          89 passed
+Alembic:        synchronized
+Database head:  666e0bbbf372
+Email identity: case-insensitive
+Tenant model:   foundations implemented
+```
+
+El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:
+
+```text
+implementación
+    ↓
+tests específicos
+    ↓
+suite completa
+    ↓
+comprobación de migraciones
+    ↓
+revisión README
+    ↓
+Git commit
+```
 
 ---
 
-## 👨‍💻 Autor
+# Licencia
 
-Desarrollado por **Manuel Ríos Reina**.
+Proyecto desarrollado con fines educativos, profesionales y de portfolio.
 
-Proyecto desarrollado como aplicación práctica y proyecto de portfolio.
+La futura publicación o distribución de una versión utilizable en producción requerirá completar las validaciones técnicas, fiscales y de seguridad correspondientes.

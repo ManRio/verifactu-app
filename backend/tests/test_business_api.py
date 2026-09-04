@@ -1,5 +1,11 @@
 from uuid import uuid4
 
+from sqlalchemy.orm import Session
+
+from app.domain.user.schemas import UserCreate
+from app.domain.user.service import UserService
+
+
 def build_business_payload():
     return {
         "legal_name": "Test Business API SL",
@@ -11,6 +17,46 @@ def build_business_payload():
         "province": "Sevilla",
         "country_code": "ES",
     }
+
+
+def get_auth_headers_for_business(
+    client,
+    db_session: Session,
+    business_id: int,
+) -> dict[str, str]:
+    email = (
+        f"business-auth-{uuid4().hex[:12]}"
+        "@example.com"
+    )
+    password = "password123"
+
+    user_service = UserService(db_session)
+
+    user_service.create_user(
+        UserCreate(
+            business_id=business_id,
+            email=email,
+            password=password,
+            full_name="Business Auth User",
+        )
+    )
+
+    login_response = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert login_response.status_code == 200
+
+    access_token = login_response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {access_token}",
+    }
+
 
 def test_create_business(client):
     payload = build_business_payload()
@@ -36,7 +82,11 @@ def test_create_business(client):
     assert body["created_at"] is not None
     assert body["updated_at"] is not None
 
-def test_get_business(client):
+
+def test_get_business(
+    client,
+    db_session: Session,
+):
     payload = build_business_payload()
 
     create_response = client.post(
@@ -49,8 +99,15 @@ def test_get_business(client):
     created_business = create_response.json()
     business_id = created_business["id"]
 
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business_id,
+    )
+
     response = client.get(
-        f"/businesses/{business_id}"
+        f"/businesses/{business_id}",
+        headers=headers,
     )
 
     assert response.status_code == 200
@@ -66,6 +123,7 @@ def test_get_business(client):
     assert body["city"] == payload["city"]
     assert body["province"] == payload["province"]
     assert body["country_code"] == payload["country_code"]
+
 
 def test_duplicate_tax_id_returns_409(client):
     payload = build_business_payload()
@@ -89,16 +147,57 @@ def test_duplicate_tax_id_returns_409(client):
     assert "detail" in body
     assert payload["tax_id"] in body["detail"]
 
-def test_get_nonexistent_business_returns_404(client):
+
+def test_get_other_business_returns_404(
+    client,
+    db_session: Session,
+):
+    own_response = client.post(
+        "/businesses",
+        json=build_business_payload(),
+    )
+
+    other_response = client.post(
+        "/businesses",
+        json=build_business_payload(),
+    )
+
+    assert own_response.status_code == 201
+    assert other_response.status_code == 201
+
+    own_business_id = own_response.json()["id"]
+    other_business_id = other_response.json()["id"]
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business_id,
+    )
+
     response = client.get(
-        "/businesses/999999999"
+        f"/businesses/{other_business_id}",
+        headers=headers,
     )
 
     assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Resource not found"
+    }
 
-    body = response.json()
 
-    assert body["detail"] == "Business not found."
+def test_get_business_without_authentication_returns_401(
+    client,
+):
+    response = client.get(
+        "/businesses/1",
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Could not validate credentials"
+    }
+    assert response.headers["www-authenticate"] == "Bearer"
+
 
 def test_update_business(client):
     payload = build_business_payload()
@@ -138,6 +237,7 @@ def test_update_business(client):
     assert body["province"] == payload["province"]
     assert body["country_code"] == payload["country_code"]
 
+
 def test_update_nonexistent_business_returns_404(client):
     update_payload = {
         "legal_name": "Updated Business API SL",
@@ -154,7 +254,10 @@ def test_update_nonexistent_business_returns_404(client):
 
     assert body["detail"] == "Business not found."
 
-def test_update_business_with_duplicate_tax_id_returns_409(client):
+
+def test_update_business_with_duplicate_tax_id_returns_409(
+    client,
+):
     first_payload = build_business_payload()
     second_payload = build_business_payload()
 
@@ -189,6 +292,7 @@ def test_update_business_with_duplicate_tax_id_returns_409(client):
 
     assert "detail" in body
     assert first_payload["tax_id"] in body["detail"]
+
 
 def test_list_businesses(client):
     first_payload = build_business_payload()
@@ -228,6 +332,7 @@ def test_list_businesses(client):
     assert second_business_id in business_ids
     assert business_ids == sorted(business_ids)
 
+
 def test_deactivate_business(client):
     payload = build_business_payload()
 
@@ -251,6 +356,7 @@ def test_deactivate_business(client):
     assert body["id"] == business_id
     assert body["is_active"] is False
 
+
 def test_deactivate_nonexistent_business_returns_404(client):
     response = client.patch(
         "/businesses/999999999/deactivate",
@@ -261,6 +367,7 @@ def test_deactivate_nonexistent_business_returns_404(client):
     body = response.json()
 
     assert body["detail"] == "Business not found."
+
 
 def test_activate_business(client):
     payload = build_business_payload()
@@ -291,6 +398,7 @@ def test_activate_business(client):
 
     assert body["id"] == business_id
     assert body["is_active"] is True
+
 
 def test_activate_nonexistent_business_returns_404(client):
     response = client.patch(

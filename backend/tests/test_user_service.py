@@ -487,3 +487,177 @@ def test_authenticate_user_rejects_inactive_business(
             user.email,
             "password123",
         )
+
+def test_create_user_normalizes_email(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Email Normalize SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Email 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email="Normalize.User@Example.COM",
+            password="password123",
+            full_name="Normalize User",
+        )
+    )
+
+    assert user.email == "normalize.user@example.com"
+
+
+def test_authenticate_user_accepts_email_with_different_case(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Email Auth Normalize SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Email 2",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email="normalized@example.com",
+            password="password123",
+            full_name="Normalized User",
+        )
+    )
+
+    user = service.authenticate_user(
+        "NORMALIZED@EXAMPLE.COM",
+        "password123",
+    )
+
+    assert user.email == "normalized@example.com"
+
+
+def test_update_user_normalizes_email(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Email Update Normalize SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Email 3",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email="before@example.com",
+            password="password123",
+            full_name="Before User",
+        )
+    )
+
+    updated_user = service.update_user(
+        user.id,
+        UserUpdate(
+            email="After.User@Example.COM",
+        ),
+    )
+
+    assert updated_user is not None
+    assert updated_user.email == "after.user@example.com"
+
+def test_create_user_rejects_duplicate_email_with_different_case(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Case Duplicate Email SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Email 4",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email="duplicate@example.com",
+            password="password123",
+            full_name="First User",
+        )
+    )
+
+    duplicate_user = UserCreate(
+        business_id=business.id,
+        email="DUPLICATE@EXAMPLE.COM",
+        password="password123",
+        full_name="Duplicate User",
+    )
+
+    with pytest.raises(UserAlreadyExistsError):
+        service.create_user(duplicate_user)
+
+def test_get_by_email_accepts_different_case(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(db_session)
+    service = UserService(db_session)
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Get By Email Normalize SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Email 5",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    created_user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email="lookup@example.com",
+            password="password123",
+            full_name="Lookup User",
+        )
+    )
+
+    found_user = service.get_by_email(
+        "LOOKUP@EXAMPLE.COM"
+    )
+
+    assert found_user is not None
+    assert found_user.id == created_user.id
+    assert found_user.email == "lookup@example.com"

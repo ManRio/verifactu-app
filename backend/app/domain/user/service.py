@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 
+from app.core.identity import normalize_email
 from app.core.security import hash_password, verify_password
 from app.domain.business.repository import BusinessRepository
 from app.domain.user.model import User
@@ -18,11 +19,14 @@ class UserBusinessNotFoundError(Exception):
 class UserBusinessInactiveError(Exception):
     pass
 
+
 class InvalidUserCredentialsError(Exception):
     pass
 
+
 class InactiveUserError(Exception):
     pass
+
 
 class UserService:
     def __init__(self, db: Session):
@@ -30,8 +34,13 @@ class UserService:
         self.repository = UserRepository(db)
         self.business_repository = BusinessRepository(db)
 
-    def create_user(self, data: UserCreate) -> User:
-        business = self.business_repository.get_by_id(data.business_id)
+    def create_user(
+        self,
+        data: UserCreate,
+    ) -> User:
+        business = self.business_repository.get_by_id(
+            data.business_id
+        )
 
         if business is None:
             raise UserBusinessNotFoundError
@@ -39,15 +48,23 @@ class UserService:
         if not business.is_active:
             raise UserBusinessInactiveError
 
-        existing_user = self.repository.get_by_email(str(data.email))
+        normalized_email = normalize_email(
+            str(data.email)
+        )
+
+        existing_user = self.repository.get_by_email(
+            normalized_email
+        )
 
         if existing_user is not None:
             raise UserAlreadyExistsError
 
         user = self.repository.create(
             business_id=data.business_id,
-            email=str(data.email),
-            password_hash=hash_password(data.password),
+            email=normalized_email,
+            password_hash=hash_password(
+                data.password
+            ),
             full_name=data.full_name,
         )
 
@@ -60,35 +77,46 @@ class UserService:
         self,
         user_id: int,
     ) -> User | None:
-        return self.repository.get_by_id(user_id)
-
+        return self.repository.get_by_id(
+            user_id
+        )
 
     def get_by_email(
         self,
         email: str,
     ) -> User | None:
-        return self.repository.get_by_email(email)
-
+        return self.repository.get_by_email(
+            normalize_email(email)
+        )
 
     def list_by_business_id(
         self,
         business_id: int,
     ) -> list[User]:
-        return self.repository.list_by_business_id(business_id)
-
+        return self.repository.list_by_business_id(
+            business_id
+        )
 
     def update_user(
         self,
         user_id: int,
         data: UserUpdate,
     ) -> User | None:
-        user = self.repository.get_by_id(user_id)
+        user = self.repository.get_by_id(
+            user_id
+        )
 
         if user is None:
             return None
 
         if data.email is not None:
-            existing_user = self.repository.get_by_email(str(data.email))
+            normalized_email = normalize_email(
+                str(data.email)
+            )
+
+            existing_user = self.repository.get_by_email(
+                normalized_email
+            )
 
             if (
                 existing_user is not None
@@ -96,19 +124,29 @@ class UserService:
             ):
                 raise UserAlreadyExistsError
 
-        user = self.repository.update(user, data)
+            data = data.model_copy(
+                update={
+                    "email": normalized_email,
+                }
+            )
+
+        user = self.repository.update(
+            user,
+            data,
+        )
 
         self.db.commit()
         self.db.refresh(user)
 
         return user
 
-
     def deactivate_user(
         self,
         user_id: int,
     ) -> User | None:
-        user = self.repository.get_by_id(user_id)
+        user = self.repository.get_by_id(
+            user_id
+        )
 
         if user is None:
             return None
@@ -120,12 +158,13 @@ class UserService:
 
         return user
 
-
     def activate_user(
         self,
         user_id: int,
     ) -> User | None:
-        user = self.repository.get_by_id(user_id)
+        user = self.repository.get_by_id(
+            user_id
+        )
 
         if user is None:
             return None
@@ -138,11 +177,17 @@ class UserService:
         return user
 
     def authenticate_user(
-            self,
-            email:str,
-            password: str,
+        self,
+        email: str,
+        password: str,
     ) -> User:
-        user = self.repository.get_by_email(email)
+        normalized_email = normalize_email(
+            email
+        )
+
+        user = self.repository.get_by_email(
+            normalized_email
+        )
 
         if user is None:
             raise InvalidUserCredentialsError
@@ -157,7 +202,7 @@ class UserService:
             raise InactiveUserError
 
         business = self.business_repository.get_by_id(
-            user.business_id,
+            user.business_id
         )
 
         if business is None:

@@ -1,12 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
+
 class User(Base):
-    __tablename__="users"
+    __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
@@ -19,7 +20,6 @@ class User(Base):
     email: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
-        unique=True,
         index=True,
     )
 
@@ -56,4 +56,12 @@ class User(Base):
     business = relationship(
         "Business",
         back_populates="users",
+    )
+
+    __table_args__ = (
+        Index(
+            "uq_users_email_lower",
+            func.lower(email),
+            unique=True,
+        ),
     )
