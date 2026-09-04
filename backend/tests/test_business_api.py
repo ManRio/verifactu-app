@@ -1,26 +1,35 @@
 from uuid import uuid4
 
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
+from app.domain.business.schemas import BusinessCreate
+from app.domain.business.service import BusinessService
 from app.domain.user.schemas import UserCreate
 from app.domain.user.service import UserService
 
 
-def build_business_payload():
-    return {
-        "legal_name": "Test Business API SL",
-        "tax_id": f"TEST-{uuid4().hex[:12]}",
-        "trade_name": "Test API",
-        "address": "Calle Prueba 123",
-        "postal_code": "41001",
-        "city": "Sevilla",
-        "province": "Sevilla",
-        "country_code": "ES",
-    }
+def create_business(
+    db_session: Session,
+):
+    service = BusinessService(db_session)
+
+    return service.create_business(
+        BusinessCreate(
+            legal_name="Test Business API SL",
+            tax_id=f"TEST-{uuid4().hex[:12]}",
+            trade_name="Test API",
+            address="Calle Prueba 123",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
 
 
 def get_auth_headers_for_business(
-    client,
+    client: TestClient,
     db_session: Session,
     business_id: int,
 ) -> dict[str, str]:
@@ -51,62 +60,53 @@ def get_auth_headers_for_business(
 
     assert login_response.status_code == 200
 
-    access_token = login_response.json()["access_token"]
+    access_token = login_response.json()[
+        "access_token"
+    ]
 
     return {
         "Authorization": f"Bearer {access_token}",
     }
 
 
-def test_create_business(client):
-    payload = build_business_payload()
-
+def test_create_business_endpoint_is_not_exposed(
+    client: TestClient,
+):
     response = client.post(
         "/businesses",
-        json=payload,
+        json={
+            "legal_name": "Public Business SL",
+            "tax_id": f"TEST-{uuid4().hex[:12]}",
+            "address": "Calle Pública 1",
+            "postal_code": "41001",
+            "city": "Sevilla",
+            "province": "Sevilla",
+            "country_code": "ES",
+        },
     )
 
-    assert response.status_code == 201
-
-    body = response.json()
-
-    assert body["id"] is not None
-    assert body["legal_name"] == payload["legal_name"]
-    assert body["tax_id"] == payload["tax_id"]
-    assert body["trade_name"] == payload["trade_name"]
-    assert body["address"] == payload["address"]
-    assert body["postal_code"] == payload["postal_code"]
-    assert body["city"] == payload["city"]
-    assert body["province"] == payload["province"]
-    assert body["country_code"] == "ES"
-    assert body["created_at"] is not None
-    assert body["updated_at"] is not None
+    assert response.status_code == 405
 
 
-def test_get_business(
-    client,
+def test_list_businesses_returns_only_authenticated_business(
+    client: TestClient,
     db_session: Session,
 ):
-    payload = build_business_payload()
-
-    create_response = client.post(
-        "/businesses",
-        json=payload,
+    own_business = create_business(
+        db_session,
     )
-
-    assert create_response.status_code == 201
-
-    created_business = create_response.json()
-    business_id = created_business["id"]
+    other_business = create_business(
+        db_session,
+    )
 
     headers = get_auth_headers_for_business(
         client,
         db_session,
-        business_id,
+        own_business.id,
     )
 
     response = client.get(
-        f"/businesses/{business_id}",
+        "/businesses",
         headers=headers,
     )
 
@@ -114,68 +114,86 @@ def test_get_business(
 
     body = response.json()
 
-    assert body["id"] == business_id
-    assert body["legal_name"] == payload["legal_name"]
-    assert body["tax_id"] == payload["tax_id"]
-    assert body["trade_name"] == payload["trade_name"]
-    assert body["address"] == payload["address"]
-    assert body["postal_code"] == payload["postal_code"]
-    assert body["city"] == payload["city"]
-    assert body["province"] == payload["province"]
-    assert body["country_code"] == payload["country_code"]
+    assert isinstance(body, list)
+    assert len(body) == 1
+    assert body[0]["id"] == own_business.id
+    assert body[0]["tax_id"] == own_business.tax_id
+
+    returned_ids = {
+        business["id"]
+        for business in body
+    }
+
+    assert other_business.id not in returned_ids
 
 
-def test_duplicate_tax_id_returns_409(client):
-    payload = build_business_payload()
-
-    first_response = client.post(
+def test_list_businesses_without_authentication_returns_401(
+    client: TestClient,
+):
+    response = client.get(
         "/businesses",
-        json=payload,
     )
 
-    assert first_response.status_code == 201
-
-    second_response = client.post(
-        "/businesses",
-        json=payload,
-    )
-
-    assert second_response.status_code == 409
-
-    body = second_response.json()
-
-    assert "detail" in body
-    assert payload["tax_id"] in body["detail"]
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Could not validate credentials"
+    }
+    assert response.headers["www-authenticate"] == "Bearer"
 
 
-def test_get_other_business_returns_404(
-    client,
+def test_get_own_business(
+    client: TestClient,
     db_session: Session,
 ):
-    own_response = client.post(
-        "/businesses",
-        json=build_business_payload(),
+    business = create_business(
+        db_session,
     )
-
-    other_response = client.post(
-        "/businesses",
-        json=build_business_payload(),
-    )
-
-    assert own_response.status_code == 201
-    assert other_response.status_code == 201
-
-    own_business_id = own_response.json()["id"]
-    other_business_id = other_response.json()["id"]
 
     headers = get_auth_headers_for_business(
         client,
         db_session,
-        own_business_id,
+        business.id,
     )
 
     response = client.get(
-        f"/businesses/{other_business_id}",
+        f"/businesses/{business.id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+
+    assert body["id"] == business.id
+    assert body["legal_name"] == business.legal_name
+    assert body["tax_id"] == business.tax_id
+    assert body["trade_name"] == business.trade_name
+    assert body["address"] == business.address
+    assert body["postal_code"] == business.postal_code
+    assert body["city"] == business.city
+    assert body["province"] == business.province
+    assert body["country_code"] == business.country_code
+
+
+def test_get_other_business_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(
+        db_session,
+    )
+    other_business = create_business(
+        db_session,
+    )
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    response = client.get(
+        f"/businesses/{other_business.id}",
         headers=headers,
     )
 
@@ -186,10 +204,15 @@ def test_get_other_business_returns_404(
 
 
 def test_get_business_without_authentication_returns_401(
-    client,
+    client: TestClient,
+    db_session: Session,
 ):
+    business = create_business(
+        db_session,
+    )
+
     response = client.get(
-        "/businesses/1",
+        f"/businesses/{business.id}",
     )
 
     assert response.status_code == 401
@@ -199,91 +222,130 @@ def test_get_business_without_authentication_returns_401(
     assert response.headers["www-authenticate"] == "Bearer"
 
 
-def test_update_business(client):
-    payload = build_business_payload()
-
-    create_response = client.post(
-        "/businesses",
-        json=payload,
+def test_update_own_business(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(
+        db_session,
     )
 
-    assert create_response.status_code == 201
+    original_tax_id = business.tax_id
+    original_address = business.address
+    original_postal_code = business.postal_code
+    original_city = business.city
+    original_province = business.province
+    original_country_code = business.country_code
 
-    business_id = create_response.json()["id"]
-
-    update_payload = {
-        "legal_name": "Updated Business API SL",
-        "trade_name": "Updated API",
-    }
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
 
     response = client.patch(
-        f"/businesses/{business_id}",
-        json=update_payload,
+        f"/businesses/{business.id}",
+        headers=headers,
+        json={
+            "legal_name": "Updated Business API SL",
+            "trade_name": "Updated API",
+        },
     )
 
     assert response.status_code == 200
 
     body = response.json()
 
-    assert body["id"] == business_id
-    assert body["legal_name"] == "Updated Business API SL"
+    assert body["id"] == business.id
+    assert body["legal_name"] == (
+        "Updated Business API SL"
+    )
     assert body["trade_name"] == "Updated API"
 
-    # Los campos no enviados deben conservarse.
-    assert body["tax_id"] == payload["tax_id"]
-    assert body["address"] == payload["address"]
-    assert body["postal_code"] == payload["postal_code"]
-    assert body["city"] == payload["city"]
-    assert body["province"] == payload["province"]
-    assert body["country_code"] == payload["country_code"]
+    assert body["tax_id"] == original_tax_id
+    assert body["address"] == original_address
+    assert body["postal_code"] == original_postal_code
+    assert body["city"] == original_city
+    assert body["province"] == original_province
+    assert body["country_code"] == original_country_code
 
 
-def test_update_nonexistent_business_returns_404(client):
-    update_payload = {
-        "legal_name": "Updated Business API SL",
-    }
+def test_update_other_business_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(
+        db_session,
+    )
+    other_business = create_business(
+        db_session,
+    )
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
 
     response = client.patch(
-        "/businesses/999999999",
-        json=update_payload,
+        f"/businesses/{other_business.id}",
+        headers=headers,
+        json={
+            "legal_name": "Forbidden Update SL",
+        },
     )
 
     assert response.status_code == 404
-
-    body = response.json()
-
-    assert body["detail"] == "Business not found."
-
-
-def test_update_business_with_duplicate_tax_id_returns_409(
-    client,
-):
-    first_payload = build_business_payload()
-    second_payload = build_business_payload()
-
-    first_response = client.post(
-        "/businesses",
-        json=first_payload,
-    )
-
-    assert first_response.status_code == 201
-
-    second_response = client.post(
-        "/businesses",
-        json=second_payload,
-    )
-
-    assert second_response.status_code == 201
-
-    second_business_id = second_response.json()["id"]
-
-    update_payload = {
-        "tax_id": first_payload["tax_id"],
+    assert response.json() == {
+        "detail": "Resource not found"
     }
 
+
+def test_update_business_without_authentication_returns_401(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(
+        db_session,
+    )
+
     response = client.patch(
-        f"/businesses/{second_business_id}",
-        json=update_payload,
+        f"/businesses/{business.id}",
+        json={
+            "legal_name": "Unauthenticated Update SL",
+        },
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Could not validate credentials"
+    }
+    assert response.headers["www-authenticate"] == "Bearer"
+
+
+def test_update_own_business_with_duplicate_tax_id_returns_409(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(
+        db_session,
+    )
+    other_business = create_business(
+        db_session,
+    )
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    response = client.patch(
+        f"/businesses/{own_business.id}",
+        headers=headers,
+        json={
+            "tax_id": other_business.tax_id,
+        },
     )
 
     assert response.status_code == 409
@@ -291,122 +353,48 @@ def test_update_business_with_duplicate_tax_id_returns_409(
     body = response.json()
 
     assert "detail" in body
-    assert first_payload["tax_id"] in body["detail"]
+    assert other_business.tax_id in body["detail"]
 
 
-def test_list_businesses(client):
-    first_payload = build_business_payload()
-    second_payload = build_business_payload()
-
-    first_response = client.post(
-        "/businesses",
-        json=first_payload,
+def test_deactivate_business_endpoint_is_not_exposed(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(
+        db_session,
     )
 
-    assert first_response.status_code == 201
-
-    second_response = client.post(
-        "/businesses",
-        json=second_payload,
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
     )
-
-    assert second_response.status_code == 201
-
-    response = client.get("/businesses")
-
-    assert response.status_code == 200
-
-    body = response.json()
-
-    assert isinstance(body, list)
-
-    business_ids = [
-        business["id"]
-        for business in body
-    ]
-
-    first_business_id = first_response.json()["id"]
-    second_business_id = second_response.json()["id"]
-
-    assert first_business_id in business_ids
-    assert second_business_id in business_ids
-    assert business_ids == sorted(business_ids)
-
-
-def test_deactivate_business(client):
-    payload = build_business_payload()
-
-    create_response = client.post(
-        "/businesses",
-        json=payload,
-    )
-
-    assert create_response.status_code == 201
-
-    business_id = create_response.json()["id"]
 
     response = client.patch(
-        f"/businesses/{business_id}/deactivate",
-    )
-
-    assert response.status_code == 200
-
-    body = response.json()
-
-    assert body["id"] == business_id
-    assert body["is_active"] is False
-
-
-def test_deactivate_nonexistent_business_returns_404(client):
-    response = client.patch(
-        "/businesses/999999999/deactivate",
+        f"/businesses/{business.id}/deactivate",
+        headers=headers,
     )
 
     assert response.status_code == 404
 
-    body = response.json()
 
-    assert body["detail"] == "Business not found."
-
-
-def test_activate_business(client):
-    payload = build_business_payload()
-
-    create_response = client.post(
-        "/businesses",
-        json=payload,
+def test_activate_business_endpoint_is_not_exposed(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(
+        db_session,
     )
 
-    assert create_response.status_code == 201
-
-    business_id = create_response.json()["id"]
-
-    deactivate_response = client.patch(
-        f"/businesses/{business_id}/deactivate",
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
     )
-
-    assert deactivate_response.status_code == 200
-    assert deactivate_response.json()["is_active"] is False
 
     response = client.patch(
-        f"/businesses/{business_id}/activate",
-    )
-
-    assert response.status_code == 200
-
-    body = response.json()
-
-    assert body["id"] == business_id
-    assert body["is_active"] is True
-
-
-def test_activate_nonexistent_business_returns_404(client):
-    response = client.patch(
-        "/businesses/999999999/activate",
+        f"/businesses/{business.id}/activate",
+        headers=headers,
     )
 
     assert response.status_code == 404
-
-    body = response.json()
-
-    assert body["detail"] == "Business not found."

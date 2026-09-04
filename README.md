@@ -21,7 +21,7 @@ Actualmente están implementadas las bases de:
 - conexión con PostgreSQL;
 - migraciones con Alembic;
 - dominio de empresas;
-- ciclo de vida de empresas;
+- ciclo de vida lógico de empresas;
 - dominio de usuarios;
 - relación Business → Users;
 - creación y actualización de usuarios;
@@ -40,13 +40,17 @@ Actualmente están implementadas las bases de:
 - normalización de direcciones de email;
 - búsquedas y autenticación de email sin depender de mayúsculas/minúsculas;
 - unicidad case-insensitive de email en PostgreSQL;
-- fundamentos de autorización y aislamiento por tenant;
-- protección inicial del acceso a empresas por tenant.
+- autorización y aislamiento por tenant para Business;
+- listado de Business limitado al tenant autenticado;
+- consulta y actualización de Business protegidas mediante comprobación same-business;
+- ocultación de recursos Business cross-tenant mediante `404 Not Found`;
+- bootstrap de Business retirado de la API pública ordinaria y centralizado en `/auth/register`;
+- activación/desactivación de Business mantenida en dominio, pero no expuesta actualmente mediante HTTP.
 
 La suite automatizada cuenta actualmente con:
 
 ```text
-100 passed
+99 passed
 ```
 
 Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
@@ -424,6 +428,8 @@ El ciclo de vida utiliza desactivación lógica.
 
 No se realiza borrado físico ordinario porque la futura información fiscal y de facturación debe conservar trazabilidad.
 
+La activación y desactivación continúan implementadas en la capa de dominio, pero actualmente no se exponen mediante endpoints HTTP públicos.
+
 ---
 
 # Dominio User
@@ -459,6 +465,8 @@ Los usuarios pueden:
 - activarse;
 - desactivarse;
 - autenticarse.
+
+La protección completa de las operaciones HTTP del dominio User por tenant forma parte del siguiente bloque de autorización.
 
 ---
 
@@ -563,14 +571,9 @@ primer User
 
 El cliente no proporciona `business_id`. La relación se establece internamente después de crear la empresa.
 
-Business
-+
-primer User
-
-El cliente no proporciona business_id. La relación se establece internamente después de crear la empresa.
-
 La operación se ejecuta como una única unidad transaccional:
 
+```text
 crear Business
       ↓
 crear primer User
@@ -578,12 +581,15 @@ crear primer User
 generar access token
       ↓
 commit
+```
 
-Los servicios de Business y User permiten omitir su commit() cuando participan en esta operación coordinada, manteniendo el límite final de la transacción en AuthService.
+Los servicios de Business y User permiten omitir su `commit()` cuando participan en esta operación coordinada, manteniendo el límite final de la transacción en `AuthService`.
 
 Si cualquier paso falla, se realiza:
 
+```text
 rollback
+```
 
 evitando dejar una empresa creada sin su usuario inicial.
 
@@ -591,9 +597,12 @@ El registro devuelve un JWT utilizable inmediatamente por el nuevo usuario.
 
 Los conflictos conocidos de identidad devuelven:
 
+```text
 409 Conflict
+```
 
-tanto para un tax_id de empresa ya existente como para un email de usuario ya registrado.
+tanto para un `tax_id` de empresa ya existente como para un email de usuario ya registrado.
+
 ---
 
 # Resolución del usuario autenticado
@@ -622,9 +631,9 @@ La autenticación responde a:
 
 ```text
 ¿Quién es el usuario?
-````
+```
 
-La autorización debe responder a:
+La autorización responde a:
 
 ```text
 ¿Puede este usuario acceder a este recurso?
@@ -658,15 +667,26 @@ Cuando se intenta acceder a un recurso de otro tenant se utiliza:
 
 en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
 
-Actualmente se ha iniciado la aplicación de este modelo al endpoint:
+Actualmente este modelo se aplica a los endpoints públicos de Business:
 
 ```text
-GET /businesses/{business_id}
+GET   /businesses
+GET   /businesses/{business_id}
+PATCH /businesses/{business_id}
 ```
 
-Un usuario autenticado puede consultar su propia empresa, pero no una empresa perteneciente a otro tenant.
+Un usuario autenticado:
 
-La protección del resto de endpoints de Business y User se realizará progresivamente durante la siguiente fase.
+- solo puede listar su propia empresa;
+- puede consultar únicamente su propia empresa;
+- puede actualizar únicamente su propia empresa;
+- recibe `404 Not Found` al intentar acceder o modificar una empresa perteneciente a otro tenant.
+
+La creación inicial de Business ya no se realiza mediante `POST /businesses`. El bootstrap del tenant se realiza exclusivamente mediante `POST /auth/register`, que crea de forma transaccional el Business y su primer User.
+
+Las operaciones de activación y desactivación continúan disponibles en la capa de dominio, pero no están expuestas actualmente mediante la API pública.
+
+La protección completa de los endpoints User constituye el siguiente bloque de autorización.
 
 ---
 
@@ -689,23 +709,38 @@ GET  /auth/me
 ## Businesses
 
 ```text
-POST  /businesses
 GET   /businesses
 GET   /businesses/{business_id}
 PATCH /businesses/{business_id}
+```
+
+Todos los endpoints públicos de Business requieren autenticación.
+
+`GET /businesses` devuelve únicamente la empresa asociada al tenant autenticado y nunca expone el listado global de empresas.
+
+`GET /businesses/{business_id}` y `PATCH /businesses/{business_id}` aplican comprobación `same-business`.
+
+Los intentos de acceso cross-tenant devuelven `404 Not Found` para evitar revelar la existencia de recursos pertenecientes a otras empresas.
+
+La creación inicial de empresas se realiza mediante:
+
+```text
+POST /auth/register
+```
+
+Este endpoint crea de forma atómica el Business y su primer User.
+
+Los antiguos endpoints públicos:
+
+```text
+POST  /businesses
 PATCH /businesses/{business_id}/deactivate
 PATCH /businesses/{business_id}/activate
 ```
 
-Actualmente:
+ya no forman parte del contrato HTTP público.
 
-```text
-GET /businesses/{business_id}
-```
-
-ya aplica autenticación y comprobación de tenant.
-
-El resto de endpoints de Business todavía debe integrarse en el modelo definitivo de autorización/bootstrap.
+La activación y desactivación lógica continúan implementadas en la capa de dominio y podrán integrarse posteriormente en un flujo administrativo con una política de autorización adecuada.
 
 ## Users
 
@@ -731,15 +766,19 @@ Actualmente están implementadas las siguientes medidas:
 - mitigación de diferencias temporales para usuarios inexistentes mediante verificación Argon2 ficticia;
 - normalización consistente del email;
 - unicidad case-insensitive del email en PostgreSQL;
-- aislamiento inicial por tenant.
+- aislamiento por tenant basado en `current_user.business_id`;
+- protección completa de los endpoints públicos de Business;
+- ocultación de recursos cross-tenant mediante `404 Not Found`;
+- listado de Business limitado al tenant autenticado;
+- actualización de Business limitada al tenant autenticado;
 - registro/bootstrap transaccional;
-- rollback completo si falla la creación del Business o del primer User;
+- rollback completo si falla la creación del Business o del primer User.
 
 Todavía quedan medidas de seguridad por implementar, entre ellas:
 
-- protección completa de endpoints Business;
 - protección completa de endpoints User;
-- aislamiento cross-tenant completo;
+- aislamiento cross-tenant completo en todos los dominios;
+- batería completa de tests cross-tenant;
 - estrategia futura de revocación de sesiones/tokens si fuese necesaria.
 
 ---
@@ -759,7 +798,7 @@ pytest -q
 Estado actual:
 
 ```text
-100 passed, 1 warning
+99 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -778,7 +817,15 @@ La suite cubre actualmente, entre otros:
 - repositorio Business;
 - servicio Business;
 - API Business;
-- ciclo de vida Business;
+- ciclo de vida Business en la capa de dominio;
+- autenticación obligatoria de los endpoints públicos Business;
+- listado de Business limitado al tenant autenticado;
+- acceso autenticado a la empresa propia;
+- rechazo de consulta cross-tenant;
+- actualización de la empresa propia;
+- rechazo de actualización cross-tenant;
+- retirada de la creación directa de Business de la API pública;
+- retirada de activación/desactivación de Business de la API pública;
 - repositorio User;
 - servicio User;
 - API User;
@@ -799,8 +846,6 @@ La suite cubre actualmente, entre otros:
 - rechazo de emails duplicados con distinta capitalización;
 - resolución del tenant autenticado;
 - autorización same-business;
-- rechazo de acceso cross-tenant;
-- acceso autenticado a la empresa propia.
 - registro/bootstrap de Business + primer User;
 - emisión de JWT durante el registro;
 - utilización inmediata del token mediante `/auth/me`;
@@ -808,7 +853,7 @@ La suite cubre actualmente, entre otros:
 - rechazo de `tax_id` duplicado durante el registro;
 - rechazo de email duplicado durante el registro;
 - rollback del Business cuando falla la creación del primer User;
-- comportamiento transaccional sin `commit()` de los servicios Business y User;
+- comportamiento transaccional sin `commit()` de los servicios Business y User.
 
 ---
 
@@ -1032,11 +1077,14 @@ y no números de coma flotante.
 - [x] identidad del tenant mediante `current_user.business_id`
 - [x] dependencia `get_current_business_id`
 - [x] comprobación reutilizable same-business
-- [x] protección inicial de `GET /businesses/{business_id}`
-- [x] test de acceso cross-tenant para Business
-- [ ] proteger listado de Business
-- [ ] proteger actualización de Business
-- [ ] definir activación/desactivación de Business
+- [x] protección de `GET /businesses/{business_id}`
+- [x] protección de `GET /businesses`
+- [x] listado de Business limitado al tenant autenticado
+- [x] protección de `PATCH /businesses/{business_id}`
+- [x] aislamiento cross-tenant en consulta y actualización de Business
+- [x] retirada de `POST /businesses` del contrato público
+- [x] retirada de activación/desactivación de Business de la API pública
+- [x] tests de aislamiento y autenticación para Business
 - [ ] proteger creación/listado/actualización de User
 - [ ] aislamiento completo entre empresas
 - [ ] batería completa de tests cross-tenant
@@ -1112,10 +1160,10 @@ El siguiente bloque de trabajo se centrará en completar la seguridad y el aisla
 
 Prioridades:
 
-1. proteger el resto de endpoints Business;
-2. proteger los endpoints User;
-3. completar los tests de aislamiento cross-tenant;
-4. cerrar la fase de autenticación/autorización;
+1. proteger los endpoints User;
+2. completar los tests de aislamiento cross-tenant;
+3. cerrar la fase de autenticación/autorización;
+4. revisar la robustez de los límites de seguridad y transacciones;
 5. comenzar el dominio Product.
 
 ---
@@ -1125,12 +1173,13 @@ Prioridades:
 En el checkpoint actual:
 
 ```text
-Tests:          100 passed
+Tests:          99 passed
 Alembic:        synchronized
 Database head:  666e0bbbf372
 Email identity: case-insensitive
 Registration:   atomic bootstrap implemented
-Tenant model:   foundations implemented
+Business API:   tenant-protected
+Tenant model:   Business isolation implemented
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:
