@@ -1,24 +1,54 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user
 from app.db.session import get_db
-from app.domain.auth.schemas import LoginRequest, TokenResponse
+from app.domain.auth.schemas import (
+    LoginRequest,
+    RegistrationRequest,
+    TokenResponse,
+)
 from app.domain.auth.service import AuthService
+from app.domain.business.service import BusinessAlreadyExistsError
+from app.domain.user.model import User
+from app.domain.user.schemas import UserRead
 from app.domain.user.service import (
     InactiveUserError,
     InvalidUserCredentialsError,
+    UserAlreadyExistsError,
     UserBusinessInactiveError,
     UserBusinessNotFoundError,
 )
-from app.api.dependencies.auth import get_current_user
-from app.domain.user.model import User
-from app.domain.user.schemas import UserRead
-
 
 router = APIRouter(
     prefix="/auth",
     tags=["auth"],
 )
+
+
+@router.post(
+    "/register",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(
+    data: RegistrationRequest,
+    db: Session = Depends(get_db),
+) -> TokenResponse:
+    service = AuthService(db)
+
+    try:
+        return service.register(data)
+    except BusinessAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A business with that tax ID already exists",
+        ) from exc
+    except UserAlreadyExistsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="A user with that email already exists",
+        ) from exc
 
 
 @router.post(
@@ -46,6 +76,7 @@ def login(
                 "WWW-Authenticate": "Bearer",
             },
         ) from exc
+
 
 @router.get(
     "/me",

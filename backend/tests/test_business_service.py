@@ -251,3 +251,35 @@ def test_activate_nonexistent_business(db_session):
     )
 
     assert activated_business is None
+
+def test_create_business_without_commit(
+    db_session: Session,
+):
+    service = BusinessService(db_session)
+
+    tax_id = f"TEST-{uuid.uuid4().hex[:12]}"
+
+    business = service.create_business(
+        BusinessCreate(
+            legal_name="Transactional Business SL",
+            tax_id=tax_id,
+            address="Calle Transacción 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        ),
+        commit=False,
+    )
+
+    assert business.id is not None
+
+    db_session.rollback()
+
+    persisted_business = (
+        service.get_business_by_tax_id(
+            tax_id
+        )
+    )
+
+    assert persisted_business is None

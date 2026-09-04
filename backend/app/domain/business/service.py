@@ -13,8 +13,15 @@ class BusinessService:
         self.db = db
         self.repository = BusinessRepository(db)
 
-    def create_business(self, data: BusinessCreate) -> Business:
-        existing_business = self.repository.get_by_tax_id(data.tax_id)
+    def create_business(
+        self,
+        data: BusinessCreate,
+        *,
+        commit: bool = True,
+    ) -> Business:
+        existing_business = self.repository.get_by_tax_id(
+            data.tax_id
+        )
 
         if existing_business is not None:
             raise BusinessAlreadyExistsError(
@@ -23,8 +30,9 @@ class BusinessService:
 
         business = self.repository.create(data)
 
-        self.db.commit()
-        self.db.refresh(business)
+        if commit:
+            self.db.commit()
+            self.db.refresh(business)
 
         return business
 

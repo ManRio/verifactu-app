@@ -32,6 +32,10 @@ Actualmente están implementadas las bases de:
 - endpoint de login;
 - resolución del usuario autenticado mediante Bearer Token;
 - endpoint `/auth/me`;
+- registro/bootstrap inicial mediante `/auth/register`;
+- creación atómica de Business + primer User;
+- emisión de JWT tras el registro;
+- rollback completo del registro ante fallos;
 - revocación funcional de acceso para usuarios o empresas inactivas;
 - normalización de direcciones de email;
 - búsquedas y autenticación de email sin depender de mayúsculas/minúsculas;
@@ -42,7 +46,7 @@ Actualmente están implementadas las bases de:
 La suite automatizada cuenta actualmente con:
 
 ```text
-91 passed
+100 passed
 ```
 
 Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
@@ -541,6 +545,55 @@ El endpoint de login recibe JSON.
 
 Por esta razón se utiliza `HTTPBearer` para resolver las credenciales de las peticiones autenticadas, en lugar de anunciar un flujo OAuth2 Password basado en formulario.
 
+## Registro y bootstrap inicial
+
+El alta inicial de un tenant se realiza mediante:
+
+```text
+POST /auth/register
+```
+
+El endpoint recibe conjuntamente los datos de:
+
+```text
+Business
++
+primer User
+```
+
+El cliente no proporciona `business_id`. La relación se establece internamente después de crear la empresa.
+
+Business
++
+primer User
+
+El cliente no proporciona business_id. La relación se establece internamente después de crear la empresa.
+
+La operación se ejecuta como una única unidad transaccional:
+
+crear Business
+      ↓
+crear primer User
+      ↓
+generar access token
+      ↓
+commit
+
+Los servicios de Business y User permiten omitir su commit() cuando participan en esta operación coordinada, manteniendo el límite final de la transacción en AuthService.
+
+Si cualquier paso falla, se realiza:
+
+rollback
+
+evitando dejar una empresa creada sin su usuario inicial.
+
+El registro devuelve un JWT utilizable inmediatamente por el nuevo usuario.
+
+Los conflictos conocidos de identidad devuelven:
+
+409 Conflict
+
+tanto para un tax_id de empresa ya existente como para un email de usuario ya registrado.
 ---
 
 # Resolución del usuario autenticado
@@ -569,7 +622,7 @@ La autenticación responde a:
 
 ```text
 ¿Quién es el usuario?
-```
+````
 
 La autorización debe responder a:
 
@@ -628,6 +681,7 @@ GET /health
 ## Auth
 
 ```text
+POST /auth/register
 POST /auth/login
 GET  /auth/me
 ```
@@ -678,13 +732,14 @@ Actualmente están implementadas las siguientes medidas:
 - normalización consistente del email;
 - unicidad case-insensitive del email en PostgreSQL;
 - aislamiento inicial por tenant.
+- registro/bootstrap transaccional;
+- rollback completo si falla la creación del Business o del primer User;
 
 Todavía quedan medidas de seguridad por implementar, entre ellas:
 
 - protección completa de endpoints Business;
 - protección completa de endpoints User;
 - aislamiento cross-tenant completo;
-- flujo seguro de registro/bootstrap;
 - estrategia futura de revocación de sesiones/tokens si fuese necesaria.
 
 ---
@@ -704,7 +759,7 @@ pytest -q
 Estado actual:
 
 ```text
-91 passed, 1 warning
+100 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -746,6 +801,14 @@ La suite cubre actualmente, entre otros:
 - autorización same-business;
 - rechazo de acceso cross-tenant;
 - acceso autenticado a la empresa propia.
+- registro/bootstrap de Business + primer User;
+- emisión de JWT durante el registro;
+- utilización inmediata del token mediante `/auth/me`;
+- normalización de email durante el registro;
+- rechazo de `tax_id` duplicado durante el registro;
+- rechazo de email duplicado durante el registro;
+- rollback del Business cuando falla la creación del primer User;
+- comportamiento transaccional sin `commit()` de los servicios Business y User;
 
 ---
 
@@ -959,7 +1022,10 @@ y no números de coma flotante.
 - [x] índice funcional `lower(email)`
 - [x] sincronización SQLAlchemy/Alembic/PostgreSQL
 - [x] mitigación temporal en login
-- [ ] registro/bootstrap inicial
+- [x] registro/bootstrap inicial
+- [x] creación atómica de Business + primer User
+- [x] JWT tras registro
+- [x] rollback transaccional ante fallos de registro
 
 ## Fase 4 — Autorización y tenants
 
@@ -1046,12 +1112,11 @@ El siguiente bloque de trabajo se centrará en completar la seguridad y el aisla
 
 Prioridades:
 
-1. diseñar e implementar el flujo de registro/bootstrap;
-2. proteger el resto de endpoints Business;
-3. proteger los endpoints User;
-4. completar los tests de aislamiento cross-tenant;
-5. cerrar la fase de autenticación/autorización;
-6. comenzar el dominio Product.
+1. proteger el resto de endpoints Business;
+2. proteger los endpoints User;
+3. completar los tests de aislamiento cross-tenant;
+4. cerrar la fase de autenticación/autorización;
+5. comenzar el dominio Product.
 
 ---
 
@@ -1060,10 +1125,11 @@ Prioridades:
 En el checkpoint actual:
 
 ```text
-Tests:          91 passed
+Tests:          100 passed
 Alembic:        synchronized
 Database head:  666e0bbbf372
 Email identity: case-insensitive
+Registration:   atomic bootstrap implemented
 Tenant model:   foundations implemented
 ```
 

@@ -691,3 +691,49 @@ def test_authenticate_nonexistent_user_runs_dummy_password_verification(
         )
 
     assert dummy_verification_called is True
+
+def test_create_user_without_commit(
+    db_session: Session,
+):
+    business_repository = BusinessRepository(
+        db_session
+    )
+
+    business = business_repository.create(
+        BusinessCreate(
+            legal_name="Transactional User Business SL",
+            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
+            address="Calle Usuario 1",
+            postal_code="41001",
+            city="Sevilla",
+            province="Sevilla",
+            country_code="ES",
+        )
+    )
+
+    service = UserService(db_session)
+
+    email = (
+        f"user-{uuid.uuid4().hex[:12]}"
+        "@example.com"
+    )
+
+    user = service.create_user(
+        UserCreate(
+            business_id=business.id,
+            email=email,
+            password="password123",
+            full_name="Transactional User",
+        ),
+        commit=False,
+    )
+
+    assert user.id is not None
+
+    db_session.rollback()
+
+    persisted_user = service.get_by_email(
+        email
+    )
+
+    assert persisted_user is None

@@ -1,9 +1,10 @@
 import pytest
-from sqlalchemy.orm import Session
 from fastapi.testclient import TestClient
+from sqlalchemy.orm import Session
 
 from app.db.session import engine, get_db
 from app.main import app
+
 
 @pytest.fixture
 def db_session():
@@ -16,7 +17,10 @@ def db_session():
         yield session
     finally:
         session.close()
-        transaction.rollback()
+
+        if transaction.is_active:
+            transaction.rollback()
+
         connection.close()
 
 @pytest.fixture

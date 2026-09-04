@@ -41,6 +41,8 @@ class UserService:
     def create_user(
         self,
         data: UserCreate,
+        *,
+        commit: bool = True,
     ) -> User:
         business = self.business_repository.get_by_id(
             data.business_id
@@ -72,8 +74,9 @@ class UserService:
             full_name=data.full_name,
         )
 
-        self.db.commit()
-        self.db.refresh(user)
+        if commit:
+            self.db.commit()
+            self.db.refresh(user)
 
         return user
 
