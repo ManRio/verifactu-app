@@ -1,15 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.authorization import ensure_same_business
+from app.api.dependencies.tenant import get_current_business_id
 from app.db.session import get_db
-from app.domain.user.schemas import UserCreate, UserRead, UserUpdate
+from app.domain.user.model import User
+from app.domain.user.schemas import (
+    UserApiCreate,
+    UserCreate,
+    UserRead,
+    UserUpdate,
+)
 from app.domain.user.service import (
     UserAlreadyExistsError,
-    UserBusinessInactiveError,
-    UserBusinessNotFoundError,
     UserService,
 )
-
 
 router = APIRouter(
     prefix="/users",
@@ -23,13 +28,23 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED,
 )
 def create_user(
-    data: UserCreate,
+    data: UserApiCreate,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
     db: Session = Depends(get_db),
-):
+) -> User:
     service = UserService(db)
 
     try:
-        return service.create_user(data)
+        return service.create_user(
+            UserCreate(
+                business_id=current_business_id,
+                email=data.email,
+                password=data.password,
+                full_name=data.full_name,
+            )
+        )
 
     except UserAlreadyExistsError:
         raise HTTPException(
@@ -37,17 +52,22 @@ def create_user(
             detail="A user with this email already exists",
         )
 
-    except UserBusinessNotFoundError:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Business not found",
-        )
 
-    except UserBusinessInactiveError:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Business is inactive",
-        )
+@router.get(
+    "",
+    response_model=list[UserRead],
+)
+def list_users(
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
+    db: Session = Depends(get_db),
+) -> list[User]:
+    service = UserService(db)
+
+    return service.list_by_business_id(
+        current_business_id
+    )
 
 
 @router.get(
@@ -56,9 +76,13 @@ def create_user(
 )
 def get_user(
     user_id: int,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
     db: Session = Depends(get_db),
-):
+) -> User:
     service = UserService(db)
+
     user = service.get_by_id(user_id)
 
     if user is None:
@@ -66,6 +90,11 @@ def get_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
+
+    ensure_same_business(
+        current_business_id=current_business_id,
+        resource_business_id=user.business_id,
+    )
 
     return user
 
@@ -77,12 +106,31 @@ def get_user(
 def update_user(
     user_id: int,
     data: UserUpdate,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
     db: Session = Depends(get_db),
-):
+) -> User:
     service = UserService(db)
 
+    user = service.get_by_id(user_id)
+
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    ensure_same_business(
+        current_business_id=current_business_id,
+        resource_business_id=user.business_id,
+    )
+
     try:
-        user = service.update_user(user_id, data)
+        updated_user = service.update_user(
+            user_id,
+            data,
+        )
 
     except UserAlreadyExistsError:
         raise HTTPException(
@@ -90,50 +138,10 @@ def update_user(
             detail="A user with this email already exists",
         )
 
-    if user is None:
+    if updated_user is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
 
-    return user
-
-
-@router.patch(
-    "/{user_id}/deactivate",
-    response_model=UserRead,
-)
-def deactivate_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    service = UserService(db)
-    user = service.deactivate_user(user_id)
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    return user
-
-
-@router.patch(
-    "/{user_id}/activate",
-    response_model=UserRead,
-)
-def activate_user(
-    user_id: int,
-    db: Session = Depends(get_db),
-):
-    service = UserService(db)
-    user = service.activate_user(user_id)
-
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-
-    return user
+    return updated_user

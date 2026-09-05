@@ -3,17 +3,18 @@ import uuid
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from app.domain.business.repository import BusinessRepository
 from app.domain.business.schemas import BusinessCreate
+from app.domain.business.service import BusinessService
+from app.domain.user.schemas import UserCreate
+from app.domain.user.service import UserService
 
 
-def test_create_user(
-    client: TestClient,
+def create_business(
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    service = BusinessService(db_session)
 
-    business = business_repository.create(
+    return service.create_business(
         BusinessCreate(
             legal_name="User API Business SL",
             tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
@@ -25,15 +26,82 @@ def test_create_user(
         )
     )
 
+
+def create_user(
+    db_session: Session,
+    business_id: int,
+    *,
+    email: str | None = None,
+    full_name: str = "API User",
+):
+    service = UserService(db_session)
+
+    return service.create_user(
+        UserCreate(
+            business_id=business_id,
+            email=(
+                email
+                or f"user-{uuid.uuid4().hex[:12]}@example.com"
+            ),
+            password="password123",
+            full_name=full_name,
+        )
+    )
+
+
+def get_auth_headers_for_business(
+    client: TestClient,
+    db_session: Session,
+    business_id: int,
+):
+    email = f"auth-{uuid.uuid4().hex[:12]}@example.com"
+    password = "password123"
+
+    create_user(
+        db_session,
+        business_id,
+        email=email,
+        full_name="Authenticated User",
+    )
+
+    response = client.post(
+        "/auth/login",
+        json={
+            "email": email,
+            "password": password,
+        },
+    )
+
+    assert response.status_code == 200
+
+    token = response.json()["access_token"]
+
+    return {
+        "Authorization": f"Bearer {token}",
+    }
+
+
+def test_create_user_in_authenticated_business(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
     email = f"user-{uuid.uuid4().hex[:12]}@example.com"
 
     response = client.post(
         "/users",
+        headers=headers,
         json={
-            "business_id": business.id,
             "email": email,
             "password": "password123",
-            "full_name": "API User",
+            "full_name": "Created API User",
         },
     )
 
@@ -43,89 +111,221 @@ def test_create_user(
 
     assert data["business_id"] == business.id
     assert data["email"] == email
-    assert data["full_name"] == "API User"
+    assert data["full_name"] == "Created API User"
     assert data["is_active"] is True
 
     assert "password" not in data
     assert "password_hash" not in data
 
-def test_get_user(
+
+def test_create_user_does_not_accept_business_id(
     client: TestClient,
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
 
-    business = business_repository.create(
-        BusinessCreate(
-            legal_name="Get User API Business SL",
-            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
-            address="Calle API 2",
-            postal_code="41002",
-            city="Sevilla",
-            province="Sevilla",
-            country_code="ES",
-        )
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
     )
 
-    create_response = client.post(
+    response = client.post(
         "/users",
+        headers=headers,
         json={
-            "business_id": business.id,
+            "business_id": other_business.id,
             "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
             "password": "password123",
-            "full_name": "Get API User",
+            "full_name": "Cross Tenant User",
         },
     )
 
-    user_id = create_response.json()["id"]
+    assert response.status_code == 422
 
-    response = client.get(f"/users/{user_id}")
+
+def test_create_user_without_authentication_returns_401(
+    client: TestClient,
+):
+    response = client.post(
+        "/users",
+        json={
+            "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
+            "password": "password123",
+            "full_name": "Unauthenticated User",
+        },
+    )
+
+    assert response.status_code == 401
+
+
+def test_list_users_returns_only_authenticated_business(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    own_user = create_user(
+        db_session,
+        own_business.id,
+        full_name="Own Tenant User",
+    )
+
+    other_user = create_user(
+        db_session,
+        other_business.id,
+        full_name="Other Tenant User",
+    )
+
+    response = client.get(
+        "/users",
+        headers=headers,
+    )
 
     assert response.status_code == 200
-    assert response.json()["id"] == user_id
+
+    returned_ids = {
+        user["id"]
+        for user in response.json()
+    }
+
+    assert own_user.id in returned_ids
+    assert other_user.id not in returned_ids
+
+    assert all(
+        user["business_id"] == own_business.id
+        for user in response.json()
+    )
 
 
-def test_get_user_returns_404_when_not_found(
+def test_list_users_without_authentication_returns_401(
     client: TestClient,
 ):
-    response = client.get("/users/999999")
+    response = client.get("/users")
 
-    assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
+    assert response.status_code == 401
 
 
-def test_update_user(
+def test_get_own_business_user(
     client: TestClient,
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    business = create_business(db_session)
 
-    business = business_repository.create(
-        BusinessCreate(
-            legal_name="Update User API Business SL",
-            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
-            address="Calle API 3",
-            postal_code="41003",
-            city="Sevilla",
-            province="Sevilla",
-            country_code="ES",
-        )
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
     )
 
-    create_response = client.post(
-        "/users",
-        json={
-            "business_id": business.id,
-            "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
-            "password": "password123",
-            "full_name": "Original API User",
-        },
+    user = create_user(
+        db_session,
+        business.id,
     )
 
-    user_id = create_response.json()["id"]
+    response = client.get(
+        f"/users/{user.id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["id"] == user.id
+    assert response.json()["business_id"] == business.id
+
+
+def test_get_other_business_user_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    other_user = create_user(
+        db_session,
+        other_business.id,
+    )
+
+    response = client.get(
+        f"/users/{other_user.id}",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_get_user_without_authentication_returns_401(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    user = create_user(
+        db_session,
+        business.id,
+    )
+
+    response = client.get(
+        f"/users/{user.id}"
+    )
+
+    assert response.status_code == 401
+
+
+def test_get_nonexistent_user_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    response = client.get(
+        "/users/999999999",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_update_own_business_user(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    user = create_user(
+        db_session,
+        business.id,
+        full_name="Original API User",
+    )
 
     response = client.patch(
-        f"/users/{user_id}",
+        f"/users/{user.id}",
+        headers=headers,
         json={
             "full_name": "Updated API User",
         },
@@ -135,139 +335,134 @@ def test_update_user(
     assert response.json()["full_name"] == "Updated API User"
 
 
-def test_create_user_returns_409_when_email_already_exists(
+def test_update_other_business_user_returns_404(
     client: TestClient,
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
 
-    business = business_repository.create(
-        BusinessCreate(
-            legal_name="Duplicate User API Business SL",
-            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
-            address="Calle API 4",
-            postal_code="41004",
-            city="Sevilla",
-            province="Sevilla",
-            country_code="ES",
-        )
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
     )
 
-    email = f"user-{uuid.uuid4().hex[:12]}@example.com"
-
-    payload = {
-        "business_id": business.id,
-        "email": email,
-        "password": "password123",
-        "full_name": "Duplicate API User",
-    }
-
-    first_response = client.post(
-        "/users",
-        json=payload,
+    other_user = create_user(
+        db_session,
+        other_business.id,
     )
 
-    second_response = client.post(
-        "/users",
-        json=payload,
-    )
-
-    assert first_response.status_code == 201
-    assert second_response.status_code == 409
-
-
-def test_create_user_returns_404_when_business_does_not_exist(
-    client: TestClient,
-):
-    response = client.post(
-        "/users",
+    response = client.patch(
+        f"/users/{other_user.id}",
+        headers=headers,
         json={
-            "business_id": 999999,
-            "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
-            "password": "password123",
-            "full_name": "No Business User",
+            "full_name": "Forbidden Update",
         },
     )
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Business not found"
 
 
-def test_deactivate_user(
+def test_update_user_without_authentication_returns_401(
     client: TestClient,
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    business = create_business(db_session)
 
-    business = business_repository.create(
-        BusinessCreate(
-            legal_name="Deactivate User API Business SL",
-            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
-            address="Calle API 5",
-            postal_code="41005",
-            city="Sevilla",
-            province="Sevilla",
-            country_code="ES",
-        )
+    user = create_user(
+        db_session,
+        business.id,
     )
 
-    create_response = client.post(
-        "/users",
+    response = client.patch(
+        f"/users/{user.id}",
         json={
-            "business_id": business.id,
-            "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
-            "password": "password123",
-            "full_name": "Deactivate API User",
+            "full_name": "Unauthenticated Update",
         },
     )
 
-    user_id = create_response.json()["id"]
-
-    response = client.patch(
-        f"/users/{user_id}/deactivate"
-    )
-
-    assert response.status_code == 200
-    assert response.json()["is_active"] is False
+    assert response.status_code == 401
 
 
-def test_activate_user(
+def test_update_user_with_duplicate_email_returns_409(
     client: TestClient,
     db_session: Session,
 ):
-    business_repository = BusinessRepository(db_session)
+    business = create_business(db_session)
 
-    business = business_repository.create(
-        BusinessCreate(
-            legal_name="Activate User API Business SL",
-            tax_id=f"TEST-{uuid.uuid4().hex[:12]}",
-            address="Calle API 6",
-            postal_code="41006",
-            city="Sevilla",
-            province="Sevilla",
-            country_code="ES",
-        )
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
     )
 
-    create_response = client.post(
-        "/users",
-        json={
-            "business_id": business.id,
-            "email": f"user-{uuid.uuid4().hex[:12]}@example.com",
-            "password": "password123",
-            "full_name": "Activate API User",
-        },
+    first_user = create_user(
+        db_session,
+        business.id,
     )
 
-    user_id = create_response.json()["id"]
-
-    client.patch(
-        f"/users/{user_id}/deactivate"
+    second_user = create_user(
+        db_session,
+        business.id,
     )
 
     response = client.patch(
-        f"/users/{user_id}/activate"
+        f"/users/{second_user.id}",
+        headers=headers,
+        json={
+            "email": first_user.email,
+        },
     )
 
-    assert response.status_code == 200
-    assert response.json()["is_active"] is True
+    assert response.status_code == 409
+
+
+def test_deactivate_user_endpoint_is_not_exposed(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    user = create_user(
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/users/{user.id}/deactivate",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+
+
+def test_activate_user_endpoint_is_not_exposed(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    user = create_user(
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/users/{user.id}/activate",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
