@@ -398,3 +398,27 @@ def test_activate_business_endpoint_is_not_exposed(
     )
 
     assert response.status_code == 404
+
+def test_update_business_rejects_is_active(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(
+        db_session,
+    )
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/businesses/{business.id}",
+        headers=headers,
+        json={
+            "is_active": False,
+        },
+    )
+
+    assert response.status_code == 422

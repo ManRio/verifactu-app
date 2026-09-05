@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class BusinessBase(BaseModel):
     legal_name: str = Field(min_length=1, max_length=150)
     tax_id: str = Field(min_length=1, max_length=20)
@@ -25,6 +26,10 @@ class BusinessUpdate(BaseModel):
     city: str | None = Field(default=None, min_length=1, max_length=100)
     province: str | None = Field(default=None, min_length=1, max_length=100)
     country_code: str | None = Field(default=None, min_length=2, max_length=2)
+
+    model_config = ConfigDict(
+        extra="forbid",
+    )
 
 class BusinessRead(BusinessBase):
     id: int

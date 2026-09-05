@@ -49,14 +49,19 @@ Actualmente están implementadas las bases de:
 - ocultación de recursos Business y User cross-tenant mediante `404 Not Found`;
 - creación de usuarios asociada internamente al tenant autenticado;
 - `business_id` retirado del payload HTTP de creación ordinaria de usuarios;
+- rechazo explícito de campos fuera del contrato en actualizaciones HTTP de Business y User;
+- protección frente a intentos de modificar `is_active` mediante `PATCH /businesses/{business_id}`;
+- protección frente a intentos de modificar `business_id` mediante `PATCH /users/{user_id}`;
 - bootstrap de Business retirado de la API pública ordinaria y centralizado en `/auth/register`;
 - activación/desactivación de Business mantenida en dominio, pero no expuesta actualmente mediante HTTP;
-- activación/desactivación de User mantenida en dominio, pero no expuesta actualmente mediante HTTP.
+- activación/desactivación de User mantenida en dominio, pero no expuesta actualmente mediante HTTP;
+- revisión final del aislamiento de los dominios públicos Business y User;
+- fase inicial de autenticación, autorización y aislamiento por tenant completada.
 
 La suite automatizada cuenta actualmente con:
 
 ```text
-106 passed
+108 passed
 ```
 
 Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
@@ -436,6 +441,14 @@ No se realiza borrado físico ordinario porque la futura información fiscal y d
 
 La activación y desactivación continúan implementadas en la capa de dominio, pero actualmente no se exponen mediante endpoints HTTP públicos.
 
+Las actualizaciones HTTP de Business utilizan un contrato estricto. Los campos no declarados en `BusinessUpdate` se rechazan en lugar de ignorarse silenciosamente.
+
+Esto impide, entre otros casos, intentar modificar mediante el endpoint ordinario de actualización campos de ciclo de vida como:
+
+```text
+is_active
+```
+
 ---
 
 # Dominio User
@@ -482,6 +495,8 @@ current_user.business_id
 ```
 
 El schema HTTP de creación rechaza campos adicionales, por lo que un intento de proporcionar manualmente `business_id` no forma parte del contrato válido de la API.
+
+El contrato HTTP de actualización también rechaza campos adicionales. Por tanto, `business_id` no puede introducirse mediante `PATCH /users/{user_id}` para intentar trasladar un usuario a otro tenant.
 
 El listado de usuarios devuelve exclusivamente los usuarios pertenecientes al Business autenticado.
 
@@ -688,7 +703,9 @@ Cuando se intenta acceder a un recurso de otro tenant se utiliza:
 
 en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
 
-Actualmente este modelo se aplica a los endpoints públicos de Business y User.
+Este modelo se aplica actualmente a todos los dominios públicos que contienen recursos asociados a tenant: Business y User.
+
+La revisión final de esta fase ha comprobado además que los contratos HTTP de actualización no acepten silenciosamente campos sensibles fuera del schema. `BusinessUpdate` y `UserUpdate` utilizan configuración estricta para rechazar campos adicionales mediante validación `422 Unprocessable Entity`.
 
 ### Business
 
@@ -703,7 +720,8 @@ Un usuario autenticado:
 - solo puede listar su propia empresa;
 - puede consultar únicamente su propia empresa;
 - puede actualizar únicamente su propia empresa;
-- recibe `404 Not Found` al intentar acceder o modificar una empresa perteneciente a otro tenant.
+- recibe `404 Not Found` al intentar acceder o modificar una empresa perteneciente a otro tenant;
+- no puede modificar `is_active` mediante el `PATCH` ordinario de Business.
 
 La creación inicial de Business ya no se realiza mediante `POST /businesses`. El bootstrap del tenant se realiza exclusivamente mediante `POST /auth/register`, que crea de forma transaccional el Business y su primer User.
 
@@ -723,6 +741,7 @@ Un usuario autenticado:
 - solo puede listar usuarios pertenecientes a su propia empresa;
 - puede consultar únicamente usuarios de su propia empresa;
 - puede actualizar únicamente usuarios de su propia empresa;
+- no puede modificar `business_id` mediante el `PATCH` ordinario de User;
 - recibe `404 Not Found` al intentar consultar o modificar usuarios de otro tenant.
 
 Las operaciones de activación y desactivación de Business y User continúan disponibles en sus respectivas capas de dominio, pero no están expuestas actualmente mediante la API pública.
@@ -737,6 +756,7 @@ Su futura exposición requerirá una política explícita de autorización admin
 
 ```text
 GET /health
+GET /health/db
 ```
 
 ## Auth
@@ -762,6 +782,8 @@ Todos los endpoints públicos de Business requieren autenticación.
 `GET /businesses/{business_id}` y `PATCH /businesses/{business_id}` aplican comprobación `same-business`.
 
 Los intentos de acceso cross-tenant devuelven `404 Not Found` para evitar revelar la existencia de recursos pertenecientes a otras empresas.
+
+El contrato de actualización rechaza campos adicionales. En particular, `is_active` no puede modificarse mediante el endpoint ordinario `PATCH /businesses/{business_id}`.
 
 La creación inicial de empresas se realiza mediante:
 
@@ -806,6 +828,8 @@ Los intentos de consultar o modificar usuarios pertenecientes a otro tenant devu
 404 Not Found
 ```
 
+El contrato de actualización rechaza campos adicionales. En particular, `business_id` no puede modificarse mediante `PATCH /users/{user_id}`.
+
 Los endpoints:
 
 ```text
@@ -847,16 +871,23 @@ Actualmente están implementadas las siguientes medidas:
 - consulta y actualización de User limitadas al tenant autenticado;
 - creación ordinaria de User ligada al tenant autenticado;
 - rechazo de `business_id` arbitrario en el payload HTTP de creación de User;
+- rechazo de campos no declarados en las actualizaciones HTTP de Business y User;
+- protección frente a modificación de `is_active` mediante el `PATCH` ordinario de Business;
+- protección frente a modificación de `business_id` mediante el `PATCH` ordinario de User;
 - registro/bootstrap transaccional;
-- rollback completo si falla la creación del Business o del primer User.
+- rollback completo si falla la creación del Business o del primer User;
+- revisión de aislamiento de todos los dominios públicos actualmente asociados a tenant.
 
-Todavía quedan medidas de seguridad por implementar o revisar, entre ellas:
+La fase inicial de autenticación, autorización y aislamiento necesaria para continuar con los siguientes dominios del MVP se considera completada.
 
-- completar la revisión global de aislamiento cross-tenant;
-- ampliar la batería de tests de aislamiento a los futuros dominios;
+Siguen existiendo mejoras de seguridad previstas para fases posteriores, entre ellas:
+
+- ampliar la batería de aislamiento a cada nuevo dominio asociado a tenant;
 - definir una política de roles/administración para operaciones sensibles;
-- revisar la robustez de los límites de seguridad y transacciones;
-- estrategia futura de revocación de sesiones/tokens si fuese necesaria.
+- revisar los límites transaccionales y errores concurrentes a medida que aparezcan operaciones compuestas;
+- definir una estrategia de revocación avanzada de sesiones/tokens si fuese necesaria.
+
+Estas mejoras no se consideran bloqueantes para comenzar el dominio Product y deberán incorporarse cuando el modelo funcional correspondiente las requiera.
 
 ---
 
@@ -875,7 +906,7 @@ pytest -q
 Estado actual:
 
 ```text
-106 passed, 1 warning
+108 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -890,7 +921,7 @@ No bloquea actualmente el desarrollo y se resolverá de forma separada.
 
 La suite cubre actualmente, entre otros:
 
-- health endpoint;
+- health endpoints;
 - repositorio Business;
 - servicio Business;
 - API Business;
@@ -901,6 +932,7 @@ La suite cubre actualmente, entre otros:
 - rechazo de consulta cross-tenant de Business;
 - actualización de la empresa propia;
 - rechazo de actualización cross-tenant de Business;
+- rechazo de `is_active` como campo extra en la actualización HTTP de Business;
 - retirada de la creación directa de Business de la API pública;
 - retirada de activación/desactivación de Business de la API pública;
 - repositorio User;
@@ -914,6 +946,7 @@ La suite cubre actualmente, entre otros:
 - rechazo de consulta cross-tenant de User;
 - actualización de usuarios del propio tenant;
 - rechazo de actualización cross-tenant de User;
+- rechazo de `business_id` como campo extra en la actualización HTTP de User;
 - rechazo de actualización a un email ya existente;
 - retirada de activación/desactivación de User de la API pública;
 - hashing de contraseñas;
@@ -1183,8 +1216,10 @@ y no números de coma flotante.
 - [x] retirada de activación/desactivación de User de la API pública
 - [x] tests de aislamiento y autenticación para User
 - [x] aislamiento de los dominios públicos actuales Business y User
-- [ ] revisión final de aislamiento y límites de autorización
-- [ ] cierre de la fase de autenticación/autorización
+- [x] contratos estrictos de actualización para Business y User
+- [x] rechazo de campos sensibles fuera de contrato en operaciones PATCH
+- [x] revisión final de aislamiento y límites de autorización
+- [x] cierre de la fase de autenticación/autorización
 
 ## Fase 5 — Products
 
@@ -1253,17 +1288,22 @@ y no números de coma flotante.
 
 # Próximos pasos
 
-Los dominios públicos actuales Business y User ya están protegidos mediante autenticación y aislamiento por tenant.
+Las fases iniciales de autenticación, autorización y aislamiento por tenant quedan cerradas para los dominios públicos actuales.
 
-El siguiente bloque de trabajo se centrará en cerrar la fase de autenticación/autorización antes de comenzar el dominio Product.
+Business y User requieren autenticación, derivan el tenant del usuario autenticado y aplican aislamiento cross-tenant. Los contratos HTTP de actualización rechazan además campos fuera del schema para impedir modificaciones implícitas de atributos sensibles como `is_active` o `business_id`.
+
+El siguiente bloque de trabajo comienza el dominio **Product**.
 
 Prioridades:
 
-1. realizar una revisión final del aislamiento cross-tenant y de los límites de autorización;
-2. completar cualquier test de seguridad o aislamiento que falte;
-3. revisar la robustez de los límites transaccionales y errores concurrentes relevantes;
-4. cerrar formalmente la fase de autenticación/autorización;
-5. comenzar el dominio Product.
+1. definir el modelo y las reglas de negocio de Product;
+2. definir la relación Product → Business y su aislamiento por tenant;
+3. modelar precios e impuestos utilizando tipos decimales exactos;
+4. implementar repository y service;
+5. implementar la API protegida de Product;
+6. cubrir el dominio con tests unitarios, de integración y de aislamiento cross-tenant.
+
+Las mejoras futuras de roles, administración avanzada y gestión de sesiones se abordarán cuando exista un requisito funcional que las necesite, sin bloquear el desarrollo de los dominios principales del MVP.
 
 ---
 
@@ -1272,14 +1312,16 @@ Prioridades:
 En el checkpoint actual:
 
 ```text
-Tests:          106 passed
+Tests:          108 passed
 Alembic:        synchronized
 Database head:  666e0bbbf372
 Email identity: case-insensitive
 Registration:   atomic bootstrap implemented
 Business API:   tenant-protected
 User API:       tenant-protected
-Tenant model:   Business/User isolation implemented
+Tenant model:   Business/User isolation reviewed
+Auth/Authz:     Phase 4 completed
+Next domain:    Product
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:

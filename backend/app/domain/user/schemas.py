@@ -40,6 +40,10 @@ class UserUpdate(BaseModel):
         max_length=150,
     )
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
 
 class UserRead(BaseModel):
     id: int

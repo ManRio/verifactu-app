@@ -466,3 +466,31 @@ def test_activate_user_endpoint_is_not_exposed(
     )
 
     assert response.status_code == 404
+
+def test_update_user_rejects_business_id(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    user = create_user(
+        db_session,
+        own_business.id,
+    )
+
+    response = client.patch(
+        f"/users/{user.id}",
+        headers=headers,
+        json={
+            "business_id": other_business.id,
+        },
+    )
+
+    assert response.status_code == 422
