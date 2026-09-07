@@ -13,7 +13,7 @@ El objetivo es construir una solución ligera y mantenible para negocios que nec
 
 ## Estado actual
 
-El proyecto se encuentra en una fase de desarrollo **backend-first**.
+El proyecto comenzó con un enfoque **backend-first** para establecer una base sólida de persistencia, autenticación, autorización y aislamiento multi-tenant.
 
 Actualmente están implementadas las bases de:
 
@@ -42,29 +42,34 @@ Actualmente están implementadas las bases de:
 - unicidad case-insensitive de email en PostgreSQL;
 - autorización y aislamiento por tenant para Business;
 - autorización y aislamiento por tenant para User;
+- autorización y aislamiento por tenant para Product;
 - listado de Business limitado al tenant autenticado;
 - listado de Users limitado al tenant autenticado;
+- listado de Products limitado al tenant autenticado;
 - consulta y actualización de Business protegidas mediante comprobación same-business;
 - consulta y actualización de User protegidas mediante comprobación same-business;
-- ocultación de recursos Business y User cross-tenant mediante `404 Not Found`;
+- consulta y actualización de Product protegidas mediante comprobación same-business;
+- ocultación de recursos cross-tenant mediante `404 Not Found`;
 - creación de usuarios asociada internamente al tenant autenticado;
-- `business_id` retirado del payload HTTP de creación ordinaria de usuarios;
-- rechazo explícito de campos fuera del contrato en actualizaciones HTTP de Business y User;
-- protección frente a intentos de modificar `is_active` mediante `PATCH /businesses/{business_id}`;
-- protección frente a intentos de modificar `business_id` mediante `PATCH /users/{user_id}`;
-- bootstrap de Business retirado de la API pública ordinaria y centralizado en `/auth/register`;
-- activación/desactivación de Business mantenida en dominio, pero no expuesta actualmente mediante HTTP;
-- activación/desactivación de User mantenida en dominio, pero no expuesta actualmente mediante HTTP;
-- revisión final del aislamiento de los dominios públicos Business y User;
-- fase inicial de autenticación, autorización y aislamiento por tenant completada.
+- creación de productos asociada internamente al tenant autenticado;
+- contratos HTTP estrictos para impedir la modificación de campos sensibles;
+- dominio Product;
+- relación Business → Products;
+- precios e impuestos representados mediante tipos decimales exactos;
+- SKU opcional y único dentro de cada Business;
+- repository, service y API de Product;
+- ciclo de vida lógico de Product en la capa de dominio;
+- suite de aislamiento multi-tenant para Product.
 
 La suite automatizada cuenta actualmente con:
 
 ```text
-108 passed
+147 passed, 1 warning
 ```
 
-Existe además un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
+Existe un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
+
+El primer vertical slice funcional de **Product** está completado en backend. El siguiente objetivo es comenzar el frontend para disponer de una interfaz visible sobre las funcionalidades ya implementadas mientras el backend continúa evolucionando.
 
 ---
 
@@ -142,11 +147,9 @@ Quedan fuera del MVP:
 - Docker
 - Docker Compose
 
-## Frontend previsto
+## Frontend
 
-El frontend se desarrollará en una fase posterior.
-
-Stack previsto:
+Stack previsto para la siguiente etapa:
 
 - React
 - TypeScript
@@ -241,7 +244,8 @@ verifactu-app/
     │       ├── 4edaea57d404_create_businesses_table.py
     │       ├── e4eb415b0211_add_is_active_to_businesses.py
     │       ├── a23de07e7fb2_create_users_table.py
-    │       └── 666e0bbbf372_enforce_case_insensitive_user_email_.py
+    │       ├── 666e0bbbf372_enforce_case_insensitive_user_email_.py
+    │       └── 40cc09359304_create_products_table.py
     │
     ├── app/
     │   ├── api/
@@ -252,6 +256,7 @@ verifactu-app/
     │   │   └── routes/
     │   │       ├── auth.py
     │   │       ├── business.py
+    │   │       ├── product.py
     │   │       └── user.py
     │   │
     │   ├── core/
@@ -275,6 +280,13 @@ verifactu-app/
     │   │   │   ├── schemas.py
     │   │   │   └── service.py
     │   │   │
+    │   │   ├── product/
+    │   │   │   ├── __init__.py
+    │   │   │   ├── model.py
+    │   │   │   ├── repository.py
+    │   │   │   ├── schemas.py
+    │   │   │   └── service.py
+    │   │   │
     │   │   └── user/
     │   │       ├── model.py
     │   │       ├── repository.py
@@ -286,12 +298,17 @@ verifactu-app/
     ├── tests/
     │   ├── conftest.py
     │   ├── test_auth_api.py
+    │   ├── test_auth_dependencies.py
+    │   ├── test_auth_service.py
     │   ├── test_authorization_dependencies.py
     │   ├── test_business_api.py
     │   ├── test_business_repository.py
     │   ├── test_business_service.py
     │   ├── test_health.py
     │   ├── test_identity.py
+    │   ├── test_product_api.py
+    │   ├── test_product_repository.py
+    │   ├── test_product_service.py
     │   ├── test_security.py
     │   ├── test_tenant_dependencies.py
     │   ├── test_user_api.py
@@ -372,12 +389,13 @@ f59baa15a544_initial_migration.py
 e4eb415b0211_add_is_active_to_businesses.py
 a23de07e7fb2_create_users_table.py
 666e0bbbf372_enforce_case_insensitive_user_email_.py
+40cc09359304_create_products_table.py
 ```
 
 La revisión actual es:
 
 ```text
-666e0bbbf372 (head)
+40cc09359304 (head)
 ```
 
 Para aplicar las migraciones:
@@ -427,12 +445,14 @@ created_at
 updated_at
 ```
 
-Una empresa puede tener múltiples usuarios.
+Una empresa puede tener múltiples usuarios y productos.
 
 ```text
 Business
    │
-   └── Users
+   ├── Users
+   │
+   └── Products
 ```
 
 El ciclo de vida utiliza desactivación lógica.
@@ -503,6 +523,137 @@ El listado de usuarios devuelve exclusivamente los usuarios pertenecientes al Bu
 Las consultas y actualizaciones de usuarios aplican comprobación same-business y ocultan mediante `404 Not Found` los usuarios pertenecientes a otros tenants.
 
 Las operaciones de activación y desactivación continúan disponibles en la capa de dominio, pero no se exponen actualmente mediante HTTP hasta disponer de una política administrativa o de roles adecuada.
+
+---
+
+# Dominio Product
+
+Cada producto pertenece exactamente a una empresa mediante:
+
+```text
+business_id
+```
+
+Campos actuales:
+
+```text
+id
+business_id
+name
+sku
+description
+unit_price
+tax_rate
+is_active
+created_at
+updated_at
+```
+
+La relación es:
+
+```text
+Business
+   │
+   └── Products
+```
+
+## Precios e impuestos
+
+Los valores económicos utilizan tipos decimales exactos.
+
+En Python:
+
+```text
+Decimal
+```
+
+En PostgreSQL:
+
+```text
+unit_price NUMERIC(12, 2)
+tax_rate   NUMERIC(5, 2)
+```
+
+No se utilizan números de coma flotante para representar importes monetarios.
+
+`unit_price` representa actualmente el precio unitario antes de impuestos.
+
+`tax_rate` representa el porcentaje de impuesto asociado al producto dentro del modelo actual del MVP.
+
+## SKU
+
+El SKU es opcional.
+
+Cuando existe, su unicidad se aplica dentro del Business:
+
+```text
+(business_id, sku)
+```
+
+Por tanto:
+
+- dos productos del mismo Business no pueden compartir el mismo SKU;
+- dos Businesses distintos sí pueden utilizar el mismo SKU;
+- pueden existir múltiples productos sin SKU.
+
+La restricción está reforzada en PostgreSQL mediante un índice único compuesto:
+
+```text
+uq_products_business_id_sku
+```
+
+La comparación de SKU es actualmente exacta y sensible a mayúsculas/minúsculas.
+
+## Ciclo de vida
+
+Product utiliza desactivación lógica mediante:
+
+```text
+is_active
+```
+
+La activación y desactivación están implementadas en la capa de dominio, pero no forman parte actualmente del contrato HTTP público.
+
+No existe un `DELETE /products/{product_id}` ordinario.
+
+## Aislamiento por tenant
+
+La creación HTTP de Product no acepta `business_id`.
+
+El tenant se obtiene internamente mediante:
+
+```python
+current_user.business_id
+```
+
+El listado:
+
+```text
+GET /products
+```
+
+devuelve exclusivamente los productos del Business autenticado.
+
+Las operaciones sobre un producto concreto comprueban que:
+
+```text
+product.business_id == current_business_id
+```
+
+Los intentos de consultar o modificar productos de otro tenant devuelven:
+
+```text
+404 Not Found
+```
+
+para no revelar la existencia del recurso.
+
+El contrato `ProductUpdate` es estricto y no permite modificar mediante el `PATCH` ordinario:
+
+```text
+business_id
+is_active
+```
 
 ---
 
@@ -703,9 +854,13 @@ Cuando se intenta acceder a un recurso de otro tenant se utiliza:
 
 en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
 
-Este modelo se aplica actualmente a todos los dominios públicos que contienen recursos asociados a tenant: Business y User.
+Este modelo se aplica actualmente a los dominios públicos asociados a tenant:
 
-La revisión final de esta fase ha comprobado además que los contratos HTTP de actualización no acepten silenciosamente campos sensibles fuera del schema. `BusinessUpdate` y `UserUpdate` utilizan configuración estricta para rechazar campos adicionales mediante validación `422 Unprocessable Entity`.
+```text
+Business
+User
+Product
+```
 
 ### Business
 
@@ -723,7 +878,7 @@ Un usuario autenticado:
 - recibe `404 Not Found` al intentar acceder o modificar una empresa perteneciente a otro tenant;
 - no puede modificar `is_active` mediante el `PATCH` ordinario de Business.
 
-La creación inicial de Business ya no se realiza mediante `POST /businesses`. El bootstrap del tenant se realiza exclusivamente mediante `POST /auth/register`, que crea de forma transaccional el Business y su primer User.
+La creación inicial de Business se realiza exclusivamente mediante `POST /auth/register`.
 
 ### User
 
@@ -737,16 +892,32 @@ PATCH /users/{user_id}
 Un usuario autenticado:
 
 - puede crear nuevos usuarios únicamente dentro de su propio tenant;
-- no puede seleccionar arbitrariamente otro `business_id` durante la creación;
+- no puede seleccionar arbitrariamente otro `business_id`;
 - solo puede listar usuarios pertenecientes a su propia empresa;
 - puede consultar únicamente usuarios de su propia empresa;
 - puede actualizar únicamente usuarios de su propia empresa;
-- no puede modificar `business_id` mediante el `PATCH` ordinario de User;
+- no puede modificar `business_id` mediante el `PATCH` ordinario;
 - recibe `404 Not Found` al intentar consultar o modificar usuarios de otro tenant.
 
-Las operaciones de activación y desactivación de Business y User continúan disponibles en sus respectivas capas de dominio, pero no están expuestas actualmente mediante la API pública.
+### Product
 
-Su futura exposición requerirá una política explícita de autorización administrativa o roles.
+```text
+POST  /products
+GET   /products
+GET   /products/{product_id}
+PATCH /products/{product_id}
+```
+
+Un usuario autenticado:
+
+- puede crear productos únicamente dentro de su propio tenant;
+- no puede proporcionar arbitrariamente otro `business_id`;
+- solo puede listar productos de su propia empresa;
+- puede consultar únicamente productos de su propia empresa;
+- puede actualizar únicamente productos de su propia empresa;
+- no puede modificar `business_id` mediante el `PATCH` ordinario;
+- no puede modificar `is_active` mediante el `PATCH` ordinario;
+- recibe `404 Not Found` al intentar consultar o modificar productos de otro tenant.
 
 ---
 
@@ -777,33 +948,13 @@ PATCH /businesses/{business_id}
 
 Todos los endpoints públicos de Business requieren autenticación.
 
-`GET /businesses` devuelve únicamente la empresa asociada al tenant autenticado y nunca expone el listado global de empresas.
+`GET /businesses` devuelve únicamente la empresa asociada al tenant autenticado.
 
-`GET /businesses/{business_id}` y `PATCH /businesses/{business_id}` aplican comprobación `same-business`.
+`GET /businesses/{business_id}` y `PATCH /businesses/{business_id}` aplican comprobación same-business.
 
-Los intentos de acceso cross-tenant devuelven `404 Not Found` para evitar revelar la existencia de recursos pertenecientes a otras empresas.
+Los intentos de acceso cross-tenant devuelven `404 Not Found`.
 
-El contrato de actualización rechaza campos adicionales. En particular, `is_active` no puede modificarse mediante el endpoint ordinario `PATCH /businesses/{business_id}`.
-
-La creación inicial de empresas se realiza mediante:
-
-```text
-POST /auth/register
-```
-
-Este endpoint crea de forma atómica el Business y su primer User.
-
-Los antiguos endpoints públicos:
-
-```text
-POST  /businesses
-PATCH /businesses/{business_id}/deactivate
-PATCH /businesses/{business_id}/activate
-```
-
-ya no forman parte del contrato HTTP público.
-
-La activación y desactivación lógica continúan implementadas en la capa de dominio y podrán integrarse posteriormente en un flujo administrativo con una política de autorización adecuada.
+Los antiguos endpoints públicos de creación y cambio de estado no forman parte actualmente del contrato HTTP.
 
 ## Users
 
@@ -816,30 +967,55 @@ PATCH /users/{user_id}
 
 Todos los endpoints públicos de User requieren autenticación.
 
-`POST /users` crea el usuario dentro del tenant autenticado. El cliente proporciona los datos del usuario, pero no selecciona `business_id`; dicho identificador se obtiene internamente a partir del usuario autenticado.
+`POST /users` deriva el tenant del usuario autenticado.
 
-`GET /users` devuelve exclusivamente los usuarios pertenecientes al Business autenticado.
+`GET /users` devuelve exclusivamente los usuarios del Business autenticado.
 
-`GET /users/{user_id}` y `PATCH /users/{user_id}` aplican aislamiento same-business.
+Las operaciones sobre un usuario concreto aplican aislamiento same-business.
 
-Los intentos de consultar o modificar usuarios pertenecientes a otro tenant devuelven:
+Los endpoints de activación y desactivación no forman parte actualmente del contrato HTTP público.
+
+## Products
+
+```text
+POST  /products
+GET   /products
+GET   /products/{product_id}
+PATCH /products/{product_id}
+```
+
+Todos los endpoints de Product requieren autenticación.
+
+`POST /products` deriva `business_id` del tenant autenticado y no permite que el cliente seleccione otra empresa.
+
+`GET /products` devuelve exclusivamente los productos del Business autenticado.
+
+`GET /products/{product_id}` y `PATCH /products/{product_id}` aplican aislamiento same-business.
+
+Los intentos de acceso cross-tenant devuelven:
 
 ```text
 404 Not Found
 ```
 
-El contrato de actualización rechaza campos adicionales. En particular, `business_id` no puede modificarse mediante `PATCH /users/{user_id}`.
-
-Los endpoints:
+Los SKU duplicados dentro del mismo Business producen:
 
 ```text
-PATCH /users/{user_id}/deactivate
-PATCH /users/{user_id}/activate
+409 Conflict
 ```
 
-no forman parte actualmente del contrato HTTP público.
+El mismo SKU puede existir en Businesses diferentes.
 
-La activación y desactivación lógica siguen disponibles en la capa de dominio y podrán exponerse posteriormente cuando exista una política de roles o administración adecuada.
+Los campos:
+
+```text
+business_id
+is_active
+```
+
+no forman parte del contrato ordinario de actualización de Product y son rechazados si se intentan proporcionar mediante `PATCH`.
+
+La activación y desactivación lógica de Product existen en la capa de dominio, pero no están expuestas actualmente mediante HTTP.
 
 ---
 
@@ -862,32 +1038,26 @@ Actualmente están implementadas las siguientes medidas:
 - normalización consistente del email;
 - unicidad case-insensitive del email en PostgreSQL;
 - aislamiento por tenant basado en `current_user.business_id`;
-- protección completa de los endpoints públicos de Business;
-- protección de los endpoints públicos actuales de User;
+- protección de los endpoints públicos de Business;
+- protección de los endpoints públicos de User;
+- protección de los endpoints públicos de Product;
 - ocultación de recursos cross-tenant mediante `404 Not Found`;
-- listado de Business limitado al tenant autenticado;
-- listado de Users limitado al tenant autenticado;
-- actualización de Business limitada al tenant autenticado;
-- consulta y actualización de User limitadas al tenant autenticado;
-- creación ordinaria de User ligada al tenant autenticado;
-- rechazo de `business_id` arbitrario en el payload HTTP de creación de User;
-- rechazo de campos no declarados en las actualizaciones HTTP de Business y User;
-- protección frente a modificación de `is_active` mediante el `PATCH` ordinario de Business;
-- protección frente a modificación de `business_id` mediante el `PATCH` ordinario de User;
+- listados de Business, User y Product limitados al tenant autenticado;
+- creación ordinaria de User y Product ligada al tenant autenticado;
+- rechazo de `business_id` arbitrario en los contratos HTTP correspondientes;
+- rechazo de campos no declarados en contratos de actualización;
+- protección frente a modificaciones ordinarias de atributos sensibles;
 - registro/bootstrap transaccional;
-- rollback completo si falla la creación del Business o del primer User;
-- revisión de aislamiento de todos los dominios públicos actualmente asociados a tenant.
+- rollback completo si falla la creación del Business o del primer User.
 
-La fase inicial de autenticación, autorización y aislamiento necesaria para continuar con los siguientes dominios del MVP se considera completada.
+La fase inicial de autenticación y autorización está completada y el patrón de aislamiento se aplica ya al dominio Product.
 
 Siguen existiendo mejoras de seguridad previstas para fases posteriores, entre ellas:
 
-- ampliar la batería de aislamiento a cada nuevo dominio asociado a tenant;
+- aplicar el mismo patrón de aislamiento a cada nuevo dominio asociado a tenant;
 - definir una política de roles/administración para operaciones sensibles;
 - revisar los límites transaccionales y errores concurrentes a medida que aparezcan operaciones compuestas;
 - definir una estrategia de revocación avanzada de sesiones/tokens si fuese necesaria.
-
-Estas mejoras no se consideran bloqueantes para comenzar el dominio Product y deberán incorporarse cuando el modelo funcional correspondiente las requiera.
 
 ---
 
@@ -906,7 +1076,7 @@ pytest -q
 Estado actual:
 
 ```text
-108 passed, 1 warning
+147 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -922,58 +1092,57 @@ No bloquea actualmente el desarrollo y se resolverá de forma separada.
 La suite cubre actualmente, entre otros:
 
 - health endpoints;
-- repositorio Business;
-- servicio Business;
-- API Business;
-- ciclo de vida Business en la capa de dominio;
-- autenticación obligatoria de los endpoints públicos Business;
-- listado de Business limitado al tenant autenticado;
-- acceso autenticado a la empresa propia;
-- rechazo de consulta cross-tenant de Business;
-- actualización de la empresa propia;
-- rechazo de actualización cross-tenant de Business;
-- rechazo de `is_active` como campo extra en la actualización HTTP de Business;
-- retirada de la creación directa de Business de la API pública;
-- retirada de activación/desactivación de Business de la API pública;
-- repositorio User;
-- servicio User;
-- API User;
-- autenticación obligatoria de los endpoints públicos User;
-- creación de usuarios dentro del tenant autenticado;
-- rechazo de `business_id` arbitrario en la creación HTTP de User;
-- listado de usuarios limitado al tenant autenticado;
-- acceso a usuarios del propio tenant;
-- rechazo de consulta cross-tenant de User;
-- actualización de usuarios del propio tenant;
-- rechazo de actualización cross-tenant de User;
-- rechazo de `business_id` como campo extra en la actualización HTTP de User;
-- rechazo de actualización a un email ya existente;
-- retirada de activación/desactivación de User de la API pública;
+- repository, service y API de Business;
+- ciclo de vida Business en dominio;
+- aislamiento multi-tenant de Business;
+- contratos HTTP estrictos de Business;
+- repository, service y API de User;
+- ciclo de vida User en dominio;
+- aislamiento multi-tenant de User;
+- contratos HTTP estrictos de User;
 - hashing de contraseñas;
 - generación y decodificación de JWT;
-- tokens manipulados;
-- tokens expirados;
+- tokens manipulados y expirados;
 - login;
 - credenciales incorrectas;
-- usuarios inactivos;
-- empresas inactivas;
+- usuarios y empresas inactivas;
 - `/auth/me`;
 - resolución del usuario autenticado;
 - normalización de email;
-- autenticación con distinta capitalización del email;
-- actualización normalizada del email;
-- búsqueda case-insensitive mediante `UserService`;
-- rechazo de emails duplicados con distinta capitalización;
+- autenticación y búsquedas case-insensitive;
+- unicidad case-insensitive del email;
 - resolución del tenant autenticado;
 - autorización same-business;
 - registro/bootstrap de Business + primer User;
 - emisión de JWT durante el registro;
-- utilización inmediata del token mediante `/auth/me`;
-- normalización de email durante el registro;
-- rechazo de `tax_id` duplicado durante el registro;
-- rechazo de email duplicado durante el registro;
-- rollback del Business cuando falla la creación del primer User;
-- comportamiento transaccional sin `commit()` de los servicios Business y User.
+- rollback transaccional;
+- comportamiento de servicios sin `commit()` cuando participan en transacciones coordinadas;
+- repository de Product;
+- service de Product;
+- API de Product;
+- creación de Product dentro del tenant autenticado;
+- rechazo de `business_id` arbitrario;
+- aislamiento del listado de Product por tenant;
+- consulta de Product del tenant propio;
+- rechazo de consultas cross-tenant;
+- actualización de Product del tenant propio;
+- rechazo de actualizaciones cross-tenant;
+- rechazo de `business_id` e `is_active` en `PATCH`;
+- SKU duplicado dentro del mismo Business;
+- mismo SKU permitido en Businesses diferentes;
+- eliminación opcional del SKU mediante `null`;
+- activación y desactivación de Product en dominio;
+- comportamiento transaccional de Product sin `commit()`.
+
+La fase Product incorpora actualmente:
+
+```text
+16 tests API
+ 7 tests Repository
+16 tests Service
+-------------------
+39 tests Product
+```
 
 ---
 
@@ -1000,6 +1169,8 @@ utilizado de forma habitual por FastAPI en parámetros de dependencias.
 Esta configuración se revisará en una tarea de tooling independiente para evitar mezclar cambios de estilo globales con cambios funcionales.
 
 No se utiliza actualmente un `ruff check . --fix` indiscriminado sobre todo el proyecto.
+
+En el cierre del vertical slice Product, los archivos modificados y añadidos han superado la comprobación dirigida de Ruff ignorando únicamente la regla `B008` ya conocida para dependencias FastAPI.
 
 ---
 
@@ -1197,49 +1368,65 @@ y no números de coma flotante.
 - [x] identidad del tenant mediante `current_user.business_id`
 - [x] dependencia `get_current_business_id`
 - [x] comprobación reutilizable same-business
-- [x] protección de `GET /businesses/{business_id}`
-- [x] protección de `GET /businesses`
-- [x] listado de Business limitado al tenant autenticado
-- [x] protección de `PATCH /businesses/{business_id}`
-- [x] aislamiento cross-tenant en consulta y actualización de Business
-- [x] retirada de `POST /businesses` del contrato público
-- [x] retirada de activación/desactivación de Business de la API pública
-- [x] tests de aislamiento y autenticación para Business
-- [x] protección de `POST /users`
-- [x] protección de `GET /users`
-- [x] protección de `GET /users/{user_id}`
-- [x] protección de `PATCH /users/{user_id}`
+- [x] protección de Business
+- [x] aislamiento cross-tenant de Business
+- [x] protección de User
+- [x] aislamiento cross-tenant de User
 - [x] creación de User ligada al tenant autenticado
-- [x] retirada de `business_id` del contrato HTTP de creación de User
-- [x] listado de User limitado al tenant autenticado
-- [x] aislamiento cross-tenant en consulta y actualización de User
-- [x] retirada de activación/desactivación de User de la API pública
-- [x] tests de aislamiento y autenticación para User
-- [x] aislamiento de los dominios públicos actuales Business y User
-- [x] contratos estrictos de actualización para Business y User
-- [x] rechazo de campos sensibles fuera de contrato en operaciones PATCH
-- [x] revisión final de aislamiento y límites de autorización
-- [x] cierre de la fase de autenticación/autorización
+- [x] contratos HTTP estrictos
+- [x] ocultación de recursos cross-tenant mediante `404`
+- [x] tests de aislamiento y autenticación
+- [x] cierre de la fase inicial de autenticación/autorización
 
 ## Fase 5 — Products
 
-- [ ] modelo Product
-- [ ] impuestos
-- [ ] precios
-- [ ] repository
-- [ ] service
-- [ ] API
-- [ ] tests
+- [x] modelo Product
+- [x] relación Business → Products
+- [x] precios mediante `Decimal` / `NUMERIC`
+- [x] porcentaje de impuesto mediante `Decimal` / `NUMERIC`
+- [x] SKU opcional
+- [x] unicidad de SKU por Business
+- [x] repository
+- [x] service
+- [x] API
+- [x] autenticación
+- [x] aislamiento multi-tenant
+- [x] contratos HTTP estrictos
+- [x] activación/desactivación lógica en dominio
+- [x] migración Alembic
+- [x] tests Repository
+- [x] tests Service
+- [x] tests API
+- [x] tests cross-tenant
+- [x] vertical slice Product completado
 
-## Fase 6 — Customers
+## Fase 6 — Frontend inicial
+
+- [ ] React
+- [ ] TypeScript
+- [ ] Vite
+- [ ] Tailwind CSS
+- [ ] estructura base y routing
+- [ ] cliente HTTP
+- [ ] autenticación
+- [ ] persistencia y envío del Bearer Token
+- [ ] layout principal
+- [ ] listado de productos
+- [ ] creación de productos
+- [ ] edición de productos
+- [ ] estados de carga y error
+
+## Fase 7 — Customers
 
 - [ ] modelo Customer
 - [ ] repository
 - [ ] service
 - [ ] API
+- [ ] aislamiento multi-tenant
 - [ ] tests
+- [ ] integración frontend
 
-## Fase 7 — Invoicing
+## Fase 8 — Invoicing
 
 - [ ] modelo Invoice
 - [ ] líneas de factura
@@ -1252,8 +1439,9 @@ y no números de coma flotante.
 - [ ] PDF
 - [ ] QR
 - [ ] tests de concurrencia
+- [ ] integración frontend
 
-## Fase 8 — VERI\*FACTU
+## Fase 9 — VERI\*FACTU
 
 - [ ] BillingRecord
 - [ ] ALTA
@@ -1270,40 +1458,47 @@ y no números de coma flotante.
 - [ ] tests de integridad
 - [ ] tests de manipulación
 - [ ] tests de concurrencia
-
-## Fase 9 — Frontend
-
-- [ ] React
-- [ ] TypeScript
-- [ ] Vite
-- [ ] Tailwind CSS
-- [ ] autenticación
-- [ ] dashboard
-- [ ] productos
-- [ ] clientes
-- [ ] facturas
-- [ ] estado VERI\*FACTU
+- [ ] estado VERI\*FACTU en frontend
 
 ---
 
 # Próximos pasos
 
-Las fases iniciales de autenticación, autorización y aislamiento por tenant quedan cerradas para los dominios públicos actuales.
+El vertical slice de **Product** queda completado en backend.
 
-Business y User requieren autenticación, derivan el tenant del usuario autenticado y aplican aislamiento cross-tenant. Los contratos HTTP de actualización rechazan además campos fuera del schema para impedir modificaciones implícitas de atributos sensibles como `is_active` o `business_id`.
+La aplicación dispone ahora de una base suficiente para comenzar a construir una interfaz real sobre funcionalidades ya probadas:
 
-El siguiente bloque de trabajo comienza el dominio **Product**.
+```text
+Business
+   │
+   ├── Users
+   │
+   └── Products
+```
 
-Prioridades:
+El siguiente bloque de trabajo será el **frontend inicial**.
 
-1. definir el modelo y las reglas de negocio de Product;
-2. definir la relación Product → Business y su aislamiento por tenant;
-3. modelar precios e impuestos utilizando tipos decimales exactos;
-4. implementar repository y service;
-5. implementar la API protegida de Product;
-6. cubrir el dominio con tests unitarios, de integración y de aislamiento cross-tenant.
+La primera iteración estará orientada a obtener cuanto antes un flujo funcional visible:
 
-Las mejoras futuras de roles, administración avanzada y gestión de sesiones se abordarán cuando exista un requisito funcional que las necesite, sin bloquear el desarrollo de los dominios principales del MVP.
+```text
+Login
+  ↓
+Layout autenticado
+  ↓
+Listado de productos
+  ↓
+Crear producto
+  ↓
+Editar producto
+```
+
+El frontend consumirá la API FastAPI existente y respetará el modelo de autenticación mediante Bearer Token.
+
+Una vez establecida esta base visual, el desarrollo podrá continuar de forma vertical, incorporando nuevos dominios backend y su correspondiente interfaz sin esperar a completar todo el backend previamente.
+
+Después del frontend inicial, el siguiente dominio principal será **Customer**, seguido del núcleo de facturación.
+
+Las mejoras futuras de roles, administración avanzada, sesiones y robustez frente a determinadas condiciones concurrentes se abordarán cuando exista un requisito funcional que las necesite.
 
 ---
 
@@ -1312,16 +1507,19 @@ Las mejoras futuras de roles, administración avanzada y gestión de sesiones se
 En el checkpoint actual:
 
 ```text
-Tests:          108 passed
-Alembic:        synchronized
-Database head:  666e0bbbf372
-Email identity: case-insensitive
-Registration:   atomic bootstrap implemented
-Business API:   tenant-protected
-User API:       tenant-protected
-Tenant model:   Business/User isolation reviewed
-Auth/Authz:     Phase 4 completed
-Next domain:    Product
+Tests:           147 passed, 1 warning
+Product tests:   39 passed
+Alembic:         synchronized
+Database head:   40cc09359304
+Email identity:  case-insensitive
+Registration:    atomic bootstrap implemented
+Business API:    tenant-protected
+User API:        tenant-protected
+Product API:     tenant-protected
+Tenant model:    Business/User/Product isolation
+Auth/Authz:      initial phase completed
+Product:         vertical slice completed
+Next milestone:  frontend initial slice
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:

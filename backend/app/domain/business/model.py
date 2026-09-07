@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
+
 class Business(Base):
     __tablename__ = "businesses"
 
@@ -77,3 +78,8 @@ class Business(Base):
         "User",
         back_populates="business",
     )
+
+    products = relationship(
+    "Product",
+    back_populates="business",
+)
