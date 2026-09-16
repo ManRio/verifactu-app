@@ -592,3 +592,164 @@ def test_update_product_rejects_is_active(
     )
 
     assert response.status_code == 422
+
+def test_deactivate_own_business_product(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    product = create_product(
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/products/{product.id}/deactivate",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == product.id
+    assert data["business_id"] == business.id
+    assert data["is_active"] is False
+
+
+def test_activate_own_business_product(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        business.id,
+    )
+
+    product = create_product(
+        db_session,
+        business.id,
+    )
+
+    service = ProductService(db_session)
+    service.deactivate_product(product.id)
+
+    response = client.patch(
+        f"/products/{product.id}/activate",
+        headers=headers,
+    )
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert data["id"] == product.id
+    assert data["business_id"] == business.id
+    assert data["is_active"] is True
+
+
+def test_deactivate_other_business_product_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    other_product = create_product(
+        db_session,
+        other_business.id,
+    )
+
+    response = client.patch(
+        f"/products/{other_product.id}/deactivate",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Resource not found"
+    }
+
+
+def test_activate_other_business_product_returns_404(
+    client: TestClient,
+    db_session: Session,
+):
+    own_business = create_business(db_session)
+    other_business = create_business(db_session)
+
+    headers = get_auth_headers_for_business(
+        client,
+        db_session,
+        own_business.id,
+    )
+
+    other_product = create_product(
+        db_session,
+        other_business.id,
+    )
+
+    service = ProductService(db_session)
+    service.deactivate_product(other_product.id)
+
+    response = client.patch(
+        f"/products/{other_product.id}/activate",
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "detail": "Resource not found"
+    }
+
+
+def test_deactivate_product_without_authentication_returns_401(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    product = create_product(
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/products/{product.id}/deactivate"
+    )
+
+    assert response.status_code == 401
+
+
+def test_activate_product_without_authentication_returns_401(
+    client: TestClient,
+    db_session: Session,
+):
+    business = create_business(db_session)
+
+    product = create_product(
+        db_session,
+        business.id,
+    )
+
+    response = client.patch(
+        f"/products/{product.id}/activate"
+    )
+
+    assert response.status_code == 401

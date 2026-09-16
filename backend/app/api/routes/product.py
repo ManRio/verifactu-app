@@ -151,3 +151,84 @@ def update_product(
         )
 
     return updated_product
+
+@router.patch(
+    "/{product_id}/deactivate",
+    response_model=ProductRead,
+)
+def deactivate_product(
+    product_id: int,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
+    db: Session = Depends(get_db),
+) -> Product:
+    service = ProductService(db)
+
+    product = service.get_by_id(
+        product_id
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    ensure_same_business(
+        current_business_id=current_business_id,
+        resource_business_id=product.business_id,
+    )
+
+    deactivated_product = service.deactivate_product(
+        product_id
+    )
+
+    if deactivated_product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    return deactivated_product
+
+
+@router.patch(
+    "/{product_id}/activate",
+    response_model=ProductRead,
+)
+def activate_product(
+    product_id: int,
+    current_business_id: int = Depends(
+        get_current_business_id,
+    ),
+    db: Session = Depends(get_db),
+) -> Product:
+    service = ProductService(db)
+
+    product = service.get_by_id(
+        product_id
+    )
+
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    ensure_same_business(
+        current_business_id=current_business_id,
+        resource_business_id=product.business_id,
+    )
+
+    activated_product = service.activate_product(
+        product_id
+    )
+
+    if activated_product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Product not found",
+        )
+
+    return activated_product

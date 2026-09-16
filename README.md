@@ -48,7 +48,7 @@ Actualmente están implementadas las bases de:
 - listado de Products limitado al tenant autenticado;
 - consulta y actualización de Business protegidas mediante comprobación same-business;
 - consulta y actualización de User protegidas mediante comprobación same-business;
-- consulta y actualización de Product protegidas mediante comprobación same-business;
+- consulta, actualización y ciclo de vida de Product protegidos mediante comprobación same-business;
 - ocultación de recursos cross-tenant mediante `404 Not Found`;
 - creación de usuarios asociada internamente al tenant autenticado;
 - creación de productos asociada internamente al tenant autenticado;
@@ -58,22 +58,33 @@ Actualmente están implementadas las bases de:
 - precios e impuestos representados mediante tipos decimales exactos;
 - SKU opcional y único dentro de cada Business;
 - repository, service y API de Product;
-- ciclo de vida lógico de Product en la capa de dominio;
-- suite de aislamiento multi-tenant para Product.
+- ciclo de vida lógico de Product;
+- endpoints específicos de activación y desactivación de Product;
+- suite de aislamiento multi-tenant para Product;
+- frontend inicial con React, TypeScript, Vite y Tailwind CSS;
+- autenticación del frontend mediante JWT;
+- envío de Bearer Token a la API;
+- listado de productos;
+- creación de productos;
+- edición de productos;
+- activación y desactivación de productos;
+- integración funcional frontend → FastAPI → PostgreSQL.
 
 La suite automatizada cuenta actualmente con:
 
 ```text
-147 passed, 1 warning
+153 passed, 1 warning
 ```
 
 Existe un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
 
-El primer vertical slice funcional de **Product** está completado en backend. El siguiente objetivo es comenzar el frontend para disponer de una interfaz visible sobre las funcionalidades ya implementadas mientras el backend continúa evolucionando.
+El vertical slice de **Product** dispone actualmente de backend probado e integración frontend funcional.
+
+El siguiente dominio principal será **Customer**.
 
 ---
 
-## Objetivo del proyecto
+# Objetivo del proyecto
 
 VeriFactu App pretende cubrir las necesidades básicas de facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura preparada para evolucionar hacia una integración completa con VERI\*FACTU.
 
@@ -102,7 +113,7 @@ El MVP contempla:
 
 ---
 
-## Fuera del alcance inicial
+# Fuera del alcance inicial
 
 El objetivo no es construir un ERP completo.
 
@@ -149,14 +160,45 @@ Quedan fuera del MVP:
 
 ## Frontend
 
-Stack previsto para la siguiente etapa:
-
 - React
 - TypeScript
 - Vite
 - Tailwind CSS
+- ESLint
 
-Se valorará además el uso de:
+El frontend consume actualmente la API REST desarrollada con FastAPI.
+
+La autenticación utiliza JWT mediante Bearer Token. El token de acceso se mantiene en el cliente y se incorpora a las peticiones dirigidas a endpoints protegidos.
+
+Actualmente existe un primer flujo funcional:
+
+```text
+Login
+  ↓
+Autenticación JWT
+  ↓
+Listado de productos
+  ↓
+Crear producto
+  ↓
+Editar producto
+  ↓
+Activar / desactivar producto
+```
+
+La integración:
+
+```text
+Frontend
+   ↓
+FastAPI
+   ↓
+PostgreSQL
+```
+
+ha sido verificada manualmente durante el desarrollo.
+
+Para fases posteriores se valorará incorporar:
 
 - TanStack Query
 - React Hook Form
@@ -235,95 +277,110 @@ verifactu-app/
 ├── docker-compose.yml
 ├── README.md
 │
-└── backend/
-    │
-    ├── alembic/
-    │   ├── env.py
-    │   └── versions/
-    │       ├── f59baa15a544_initial_migration.py
-    │       ├── 4edaea57d404_create_businesses_table.py
-    │       ├── e4eb415b0211_add_is_active_to_businesses.py
-    │       ├── a23de07e7fb2_create_users_table.py
-    │       ├── 666e0bbbf372_enforce_case_insensitive_user_email_.py
-    │       └── 40cc09359304_create_products_table.py
-    │
-    ├── app/
-    │   ├── api/
-    │   │   ├── dependencies/
-    │   │   │   ├── auth.py
-    │   │   │   ├── authorization.py
-    │   │   │   └── tenant.py
-    │   │   └── routes/
-    │   │       ├── auth.py
-    │   │       ├── business.py
-    │   │       ├── product.py
-    │   │       └── user.py
-    │   │
-    │   ├── core/
-    │   │   ├── config.py
-    │   │   ├── identity.py
-    │   │   └── security.py
-    │   │
-    │   ├── db/
-    │   │   ├── base.py
-    │   │   ├── models.py
-    │   │   └── session.py
-    │   │
-    │   ├── domain/
-    │   │   ├── auth/
-    │   │   │   ├── schemas.py
-    │   │   │   └── service.py
-    │   │   │
-    │   │   ├── business/
-    │   │   │   ├── model.py
-    │   │   │   ├── repository.py
-    │   │   │   ├── schemas.py
-    │   │   │   └── service.py
-    │   │   │
-    │   │   ├── product/
-    │   │   │   ├── __init__.py
-    │   │   │   ├── model.py
-    │   │   │   ├── repository.py
-    │   │   │   ├── schemas.py
-    │   │   │   └── service.py
-    │   │   │
-    │   │   └── user/
-    │   │       ├── model.py
-    │   │       ├── repository.py
-    │   │       ├── schemas.py
-    │   │       └── service.py
-    │   │
-    │   └── main.py
-    │
-    ├── tests/
-    │   ├── conftest.py
-    │   ├── test_auth_api.py
-    │   ├── test_auth_dependencies.py
-    │   ├── test_auth_service.py
-    │   ├── test_authorization_dependencies.py
-    │   ├── test_business_api.py
-    │   ├── test_business_repository.py
-    │   ├── test_business_service.py
-    │   ├── test_health.py
-    │   ├── test_identity.py
-    │   ├── test_product_api.py
-    │   ├── test_product_repository.py
-    │   ├── test_product_service.py
-    │   ├── test_security.py
-    │   ├── test_tenant_dependencies.py
-    │   ├── test_user_api.py
-    │   ├── test_user_repository.py
-    │   └── test_user_service.py
-    │
-    ├── alembic.ini
-    └── pyproject.toml
+├── backend/
+│   │
+│   ├── alembic/
+│   │   ├── env.py
+│   │   └── versions/
+│   │       ├── f59baa15a544_initial_migration.py
+│   │       ├── 4edaea57d404_create_businesses_table.py
+│   │       ├── e4eb415b0211_add_is_active_to_businesses.py
+│   │       ├── a23de07e7fb2_create_users_table.py
+│   │       ├── 666e0bbbf372_enforce_case_insensitive_user_email_.py
+│   │       └── 40cc09359304_create_products_table.py
+│   │
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── dependencies/
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── authorization.py
+│   │   │   │   └── tenant.py
+│   │   │   └── routes/
+│   │   │       ├── auth.py
+│   │   │       ├── business.py
+│   │   │       ├── product.py
+│   │   │       └── user.py
+│   │   │
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   ├── identity.py
+│   │   │   └── security.py
+│   │   │
+│   │   ├── db/
+│   │   │   ├── base.py
+│   │   │   ├── models.py
+│   │   │   └── session.py
+│   │   │
+│   │   ├── domain/
+│   │   │   ├── auth/
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── service.py
+│   │   │   │
+│   │   │   ├── business/
+│   │   │   │   ├── model.py
+│   │   │   │   ├── repository.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── service.py
+│   │   │   │
+│   │   │   ├── product/
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── model.py
+│   │   │   │   ├── repository.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── service.py
+│   │   │   │
+│   │   │   └── user/
+│   │   │       ├── model.py
+│   │   │       ├── repository.py
+│   │   │       ├── schemas.py
+│   │   │       └── service.py
+│   │   │
+│   │   └── main.py
+│   │
+│   ├── tests/
+│   │   ├── conftest.py
+│   │   ├── test_auth_api.py
+│   │   ├── test_auth_dependencies.py
+│   │   ├── test_auth_service.py
+│   │   ├── test_authorization_dependencies.py
+│   │   ├── test_business_api.py
+│   │   ├── test_business_repository.py
+│   │   ├── test_business_service.py
+│   │   ├── test_health.py
+│   │   ├── test_identity.py
+│   │   ├── test_product_api.py
+│   │   ├── test_product_repository.py
+│   │   ├── test_product_service.py
+│   │   ├── test_security.py
+│   │   ├── test_tenant_dependencies.py
+│   │   ├── test_user_api.py
+│   │   ├── test_user_repository.py
+│   │   └── test_user_service.py
+│   │
+│   ├── alembic.ini
+│   └── pyproject.toml
+│
+└── frontend/
+    ├── src/
+    │   ├── components/
+    │   │   └── ProductForm.tsx
+    │   ├── pages/
+    │   │   └── ProductsPage.tsx
+    │   ├── services/
+    │   │   └── product.ts
+    │   └── types/
+    │       └── product.ts
+    ├── package.json
+    └── vite.config.ts
 ```
+
+La estructura del frontend continuará evolucionando a medida que se incorporen nuevos dominios y el layout principal de la aplicación.
 
 ---
 
 # Configuración
 
-La configuración se gestiona mediante `pydantic-settings`.
+La configuración del backend se gestiona mediante `pydantic-settings`.
 
 Las variables de entorno se encuentran en un archivo `.env` situado en la raíz del proyecto.
 
@@ -416,7 +473,7 @@ Para comprobar que los modelos SQLAlchemy y el esquema gestionado por Alembic es
 alembic check
 ```
 
-Estado actual:
+Estado comprobado:
 
 ```text
 No new upgrade operations detected.
@@ -612,9 +669,18 @@ Product utiliza desactivación lógica mediante:
 is_active
 ```
 
-La activación y desactivación están implementadas en la capa de dominio, pero no forman parte actualmente del contrato HTTP público.
-
 No existe un `DELETE /products/{product_id}` ordinario.
+
+El ciclo de vida se gestiona mediante endpoints específicos:
+
+```text
+PATCH /products/{product_id}/activate
+PATCH /products/{product_id}/deactivate
+```
+
+Estas operaciones están protegidas mediante autenticación y aislamiento por tenant.
+
+El campo `is_active` no puede modificarse mediante el `PATCH /products/{product_id}` ordinario, evitando mezclar la edición de los datos del producto con las operaciones explícitas de ciclo de vida.
 
 ## Aislamiento por tenant
 
@@ -640,7 +706,7 @@ Las operaciones sobre un producto concreto comprueban que:
 product.business_id == current_business_id
 ```
 
-Los intentos de consultar o modificar productos de otro tenant devuelven:
+Los intentos de consultar, modificar, activar o desactivar productos de otro tenant devuelven:
 
 ```text
 404 Not Found
@@ -711,7 +777,7 @@ Alembic
 PostgreSQL
 ```
 
-`alembic check` confirma actualmente que no existen operaciones de actualización pendientes.
+`alembic check` confirma que no existen operaciones de actualización pendientes en el checkpoint actual.
 
 ---
 
@@ -854,7 +920,7 @@ Cuando se intenta acceder a un recurso de otro tenant se utiliza:
 
 en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
 
-Este modelo se aplica actualmente a los dominios públicos asociados a tenant:
+Este modelo se aplica actualmente a:
 
 ```text
 Business
@@ -906,6 +972,8 @@ POST  /products
 GET   /products
 GET   /products/{product_id}
 PATCH /products/{product_id}
+PATCH /products/{product_id}/activate
+PATCH /products/{product_id}/deactivate
 ```
 
 Un usuario autenticado:
@@ -915,9 +983,10 @@ Un usuario autenticado:
 - solo puede listar productos de su propia empresa;
 - puede consultar únicamente productos de su propia empresa;
 - puede actualizar únicamente productos de su propia empresa;
+- puede activar o desactivar únicamente productos de su propia empresa;
 - no puede modificar `business_id` mediante el `PATCH` ordinario;
 - no puede modificar `is_active` mediante el `PATCH` ordinario;
-- recibe `404 Not Found` al intentar consultar o modificar productos de otro tenant.
+- recibe `404 Not Found` al intentar operar sobre productos de otro tenant.
 
 ---
 
@@ -982,6 +1051,8 @@ POST  /products
 GET   /products
 GET   /products/{product_id}
 PATCH /products/{product_id}
+PATCH /products/{product_id}/activate
+PATCH /products/{product_id}/deactivate
 ```
 
 Todos los endpoints de Product requieren autenticación.
@@ -990,7 +1061,7 @@ Todos los endpoints de Product requieren autenticación.
 
 `GET /products` devuelve exclusivamente los productos del Business autenticado.
 
-`GET /products/{product_id}` y `PATCH /products/{product_id}` aplican aislamiento same-business.
+Las operaciones sobre productos concretos aplican aislamiento same-business.
 
 Los intentos de acceso cross-tenant devuelven:
 
@@ -1013,9 +1084,102 @@ business_id
 is_active
 ```
 
-no forman parte del contrato ordinario de actualización de Product y son rechazados si se intentan proporcionar mediante `PATCH`.
+no forman parte del contrato ordinario de actualización de Product y son rechazados si se intentan proporcionar mediante `PATCH /products/{product_id}`.
 
-La activación y desactivación lógica de Product existen en la capa de dominio, pero no están expuestas actualmente mediante HTTP.
+El ciclo de vida se gestiona explícitamente mediante:
+
+```text
+PATCH /products/{product_id}/activate
+PATCH /products/{product_id}/deactivate
+```
+
+---
+
+# Frontend
+
+El frontend está desarrollado con:
+
+```text
+React
+TypeScript
+Vite
+Tailwind CSS
+```
+
+El objetivo del primer vertical slice frontend ha sido consumir funcionalidad real del backend antes de ampliar la interfaz a otros dominios.
+
+## Autenticación
+
+El usuario puede autenticarse contra:
+
+```text
+POST /auth/login
+```
+
+El access token obtenido se utiliza posteriormente mediante:
+
+```http
+Authorization: Bearer <token>
+```
+
+para acceder a los endpoints protegidos.
+
+## Productos
+
+La interfaz de productos permite actualmente:
+
+- cargar los productos del tenant autenticado;
+- mostrar estados de carga;
+- mostrar errores de comunicación con la API;
+- mostrar el estado vacío del catálogo;
+- crear productos;
+- editar productos existentes;
+- mostrar SKU;
+- mostrar precio unitario;
+- mostrar IVA;
+- mostrar estado activo/inactivo;
+- activar productos;
+- desactivar productos.
+
+La creación y edición utilizan un formulario reutilizable:
+
+```text
+ProductForm
+```
+
+que decide entre:
+
+```text
+POST /products
+```
+
+y:
+
+```text
+PATCH /products/{product_id}
+```
+
+dependiendo de si existe un producto en edición.
+
+El frontend no modifica directamente `business_id` ni `is_active`.
+
+El tenant se resuelve siempre en backend a partir del usuario autenticado y el ciclo de vida utiliza los endpoints específicos de activación/desactivación.
+
+## Calidad frontend
+
+El frontend ha superado:
+
+```powershell
+npm run build
+```
+
+y:
+
+```powershell
+npm run lint
+```
+
+sin errores en el checkpoint actual.
 
 ---
 
@@ -1047,10 +1211,10 @@ Actualmente están implementadas las siguientes medidas:
 - rechazo de `business_id` arbitrario en los contratos HTTP correspondientes;
 - rechazo de campos no declarados en contratos de actualización;
 - protección frente a modificaciones ordinarias de atributos sensibles;
+- operaciones explícitas de ciclo de vida de Product;
+- protección multi-tenant de activación/desactivación de Product;
 - registro/bootstrap transaccional;
 - rollback completo si falla la creación del Business o del primer User.
-
-La fase inicial de autenticación y autorización está completada y el patrón de aislamiento se aplica ya al dominio Product.
 
 Siguen existiendo mejoras de seguridad previstas para fases posteriores, entre ellas:
 
@@ -1076,7 +1240,7 @@ pytest -q
 Estado actual:
 
 ```text
-147 passed, 1 warning
+153 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -1131,17 +1295,20 @@ La suite cubre actualmente, entre otros:
 - SKU duplicado dentro del mismo Business;
 - mismo SKU permitido en Businesses diferentes;
 - eliminación opcional del SKU mediante `null`;
-- activación y desactivación de Product en dominio;
+- activación y desactivación de Product;
+- protección de activación/desactivación mediante autenticación;
+- aislamiento cross-tenant de las operaciones de ciclo de vida;
+- respuesta `404` para productos inexistentes o pertenecientes a otro tenant;
 - comportamiento transaccional de Product sin `commit()`.
 
 La fase Product incorpora actualmente:
 
 ```text
-16 tests API
+22 tests API
  7 tests Repository
 16 tests Service
 -------------------
-39 tests Product
+45 tests Product
 ```
 
 ---
@@ -1168,36 +1335,46 @@ utilizado de forma habitual por FastAPI en parámetros de dependencias.
 
 Esta configuración se revisará en una tarea de tooling independiente para evitar mezclar cambios de estilo globales con cambios funcionales.
 
-No se utiliza actualmente un `ruff check . --fix` indiscriminado sobre todo el proyecto.
+No se utiliza actualmente un:
 
-En el cierre del vertical slice Product, los archivos modificados y añadidos han superado la comprobación dirigida de Ruff ignorando únicamente la regla `B008` ya conocida para dependencias FastAPI.
+```powershell
+ruff check . --fix
+```
+
+indiscriminado sobre todo el proyecto.
+
+La deuda de lint se tratará como una tarea independiente para evitar introducir cambios masivos de estilo en commits funcionales.
 
 ---
 
 # Desarrollo local
 
+## Base de datos
+
 Desde la raíz del proyecto:
-
-```powershell
-.\backend\.venv\Scripts\Activate.ps1
-```
-
-O desde `backend`:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Iniciar PostgreSQL:
 
 ```powershell
 docker compose up -d
 ```
 
-Entrar en backend:
+Para comprobar PostgreSQL:
+
+```powershell
+docker compose ps
+```
+
+## Backend
+
+Entrar en:
 
 ```powershell
 cd backend
+```
+
+Activar el entorno virtual:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
 Aplicar migraciones:
@@ -1206,7 +1383,7 @@ Aplicar migraciones:
 alembic upgrade head
 ```
 
-Comprobar sincronización del esquema:
+Comprobar sincronización:
 
 ```powershell
 alembic check
@@ -1218,10 +1395,48 @@ Ejecutar tests:
 pytest -q
 ```
 
-Arrancar FastAPI en desarrollo:
+Arrancar FastAPI:
 
 ```powershell
 uvicorn app.main:app --reload
+```
+
+La API estará disponible durante el desarrollo en:
+
+```text
+http://127.0.0.1:8000
+```
+
+## Frontend
+
+Desde otra terminal:
+
+```powershell
+cd frontend
+```
+
+Instalar dependencias si fuese necesario:
+
+```powershell
+npm install
+```
+
+Arrancar Vite:
+
+```powershell
+npm run dev
+```
+
+Comprobar build:
+
+```powershell
+npm run build
+```
+
+Comprobar lint:
+
+```powershell
+npm run lint
 ```
 
 ---
@@ -1392,38 +1607,54 @@ y no números de coma flotante.
 - [x] autenticación
 - [x] aislamiento multi-tenant
 - [x] contratos HTTP estrictos
-- [x] activación/desactivación lógica en dominio
+- [x] activación/desactivación lógica
+- [x] endpoints de activación/desactivación
+- [x] aislamiento multi-tenant del ciclo de vida
 - [x] migración Alembic
 - [x] tests Repository
 - [x] tests Service
 - [x] tests API
 - [x] tests cross-tenant
-- [x] vertical slice Product completado
+- [x] vertical slice backend completado
 
 ## Fase 6 — Frontend inicial
 
-- [ ] React
-- [ ] TypeScript
-- [ ] Vite
-- [ ] Tailwind CSS
-- [ ] estructura base y routing
-- [ ] cliente HTTP
-- [ ] autenticación
-- [ ] persistencia y envío del Bearer Token
-- [ ] layout principal
-- [ ] listado de productos
-- [ ] creación de productos
-- [ ] edición de productos
-- [ ] estados de carga y error
+- [x] React
+- [x] TypeScript
+- [x] Vite
+- [x] Tailwind CSS
+- [x] estructura base
+- [x] cliente HTTP inicial
+- [x] autenticación
+- [x] persistencia y envío del Bearer Token
+- [x] listado de productos
+- [x] creación de productos
+- [x] edición de productos
+- [x] activación/desactivación de productos
+- [x] estados básicos de carga y error
+- [x] integración con FastAPI
+- [x] persistencia real en PostgreSQL
+- [x] build de producción
+- [x] ESLint
+- [ ] routing completo de la aplicación
+- [ ] layout/dashboard principal
 
 ## Fase 7 — Customers
 
 - [ ] modelo Customer
+- [ ] migración Alembic
+- [ ] relación Business → Customers
+- [ ] schemas
 - [ ] repository
 - [ ] service
 - [ ] API
+- [ ] autenticación
 - [ ] aislamiento multi-tenant
-- [ ] tests
+- [ ] contratos HTTP estrictos
+- [ ] tests Repository
+- [ ] tests Service
+- [ ] tests API
+- [ ] tests cross-tenant
 - [ ] integración frontend
 
 ## Fase 8 — Invoicing
@@ -1464,41 +1695,66 @@ y no números de coma flotante.
 
 # Próximos pasos
 
-El vertical slice de **Product** queda completado en backend.
-
-La aplicación dispone ahora de una base suficiente para comenzar a construir una interfaz real sobre funcionalidades ya probadas:
+El primer vertical slice completo de la aplicación conecta actualmente:
 
 ```text
-Business
-   │
-   ├── Users
-   │
-   └── Products
+React
+  ↓
+FastAPI
+  ↓
+Service
+  ↓
+Repository
+  ↓
+PostgreSQL
 ```
 
-El siguiente bloque de trabajo será el **frontend inicial**.
-
-La primera iteración estará orientada a obtener cuanto antes un flujo funcional visible:
+El flujo de Product permite:
 
 ```text
 Login
   ↓
-Layout autenticado
-  ↓
-Listado de productos
+Listar productos
   ↓
 Crear producto
   ↓
 Editar producto
+  ↓
+Activar / desactivar producto
 ```
 
-El frontend consumirá la API FastAPI existente y respetará el modelo de autenticación mediante Bearer Token.
+Esto proporciona una primera funcionalidad end-to-end sobre la que continuar construyendo la aplicación.
 
-Una vez establecida esta base visual, el desarrollo podrá continuar de forma vertical, incorporando nuevos dominios backend y su correspondiente interfaz sin esperar a completar todo el backend previamente.
+El siguiente dominio principal será **Customer**, siguiendo el mismo enfoque vertical:
 
-Después del frontend inicial, el siguiente dominio principal será **Customer**, seguido del núcleo de facturación.
+```text
+modelo y migración
+    ↓
+repository
+    ↓
+service
+    ↓
+API
+    ↓
+tests
+    ↓
+frontend
+```
 
-Las mejoras futuras de roles, administración avanzada, sesiones y robustez frente a determinadas condiciones concurrentes se abordarán cuando exista un requisito funcional que las necesite.
+Customer deberá aplicar desde el principio los patrones ya establecidos en Product:
+
+- pertenencia a `Business`;
+- aislamiento multi-tenant;
+- contratos HTTP estrictos;
+- ocultación cross-tenant mediante `404`;
+- tipos y validaciones de dominio;
+- separación Router → Service → Repository;
+- tests de repository, service y API;
+- integración con el frontend.
+
+Después de Customer comenzará el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
+
+Las mejoras de routing, layout, experiencia de usuario y arquitectura frontend se irán incorporando progresivamente a medida que aparezcan nuevas pantallas y dominios.
 
 ---
 
@@ -1507,19 +1763,24 @@ Las mejoras futuras de roles, administración avanzada, sesiones y robustez fren
 En el checkpoint actual:
 
 ```text
-Tests:           147 passed, 1 warning
-Product tests:   39 passed
-Alembic:         synchronized
-Database head:   40cc09359304
-Email identity:  case-insensitive
-Registration:    atomic bootstrap implemented
-Business API:    tenant-protected
-User API:        tenant-protected
-Product API:     tenant-protected
-Tenant model:    Business/User/Product isolation
-Auth/Authz:      initial phase completed
-Product:         vertical slice completed
-Next milestone:  frontend initial slice
+Backend tests:     153 passed, 1 warning
+Product API tests: 22 passed
+Product tests:     45 passed
+Alembic:           synchronized
+Database head:     40cc09359304
+Email identity:    case-insensitive
+Registration:      atomic bootstrap implemented
+Business API:      tenant-protected
+User API:          tenant-protected
+Product API:       tenant-protected
+Product lifecycle: HTTP + tenant-protected
+Tenant model:      Business/User/Product isolation
+Auth/Authz:        initial phase completed
+Product backend:   vertical slice completed
+Product frontend:  create/read/update/lifecycle integrated
+Frontend build:    passing
+Frontend lint:     passing
+Next domain:       Customer
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:
@@ -1532,6 +1793,8 @@ tests específicos
 suite completa
     ↓
 comprobación de migraciones
+    ↓
+integración frontend cuando corresponda
     ↓
 revisión README
     ↓
