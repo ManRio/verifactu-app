@@ -77,3 +77,29 @@ export async function updateProduct(
 
   return response.json();
 }
+
+export async function activateProduct(productId: number): Promise<Product> {
+  const response = await fetch(`${API_URL}/products/${productId}/activate`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudo activar el producto');
+  }
+
+  return response.json();
+}
+
+export async function deactivateProduct(productId: number): Promise<Product> {
+  const response = await fetch(`${API_URL}/products/${productId}/deactivate`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('No se pudo desactivar el producto');
+  }
+
+  return response.json();
+}

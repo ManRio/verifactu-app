@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
 import ProductForm from '../components/ProductForm';
 
-import { getProducts } from '../services/product';
+import {
+  getProducts,
+  activateProduct,
+  deactivateProduct,
+} from '../services/product';
 import type { Product } from '../types/product';
 
 function ProductsPage() {
@@ -56,6 +60,29 @@ function ProductsPage() {
     setEditingProduct(null);
   }
 
+  async function handleToggleStatus(product: Product) {
+    setError('');
+
+    try {
+      const updatedProduct = product.is_active
+        ? await deactivateProduct(product.id)
+        : await activateProduct(product.id);
+
+      setProducts((current) =>
+        current.map((currentProduct) =>
+          currentProduct.id === updatedProduct.id
+            ? updatedProduct
+            : currentProduct,
+        ),
+      );
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : 'No se pudo cambiar el estado del producto',
+      );
+    }
+  }
   return (
     <main className='min-h-screen bg-slate-950 px-6 py-10 text-white'>
       <div className='mx-auto max-w-6xl'>
@@ -146,13 +173,26 @@ function ProductsPage() {
                     </td>
 
                     <td className='px-6 py-4'>
-                      <button
-                        type='button'
-                        onClick={() => handleEditProduct(product)}
-                        className='font-medium text-emerald-400 transition hover:text-emerald-300'
-                      >
-                        Editar
-                      </button>
+                      <div className='flex items-center gap-4'>
+                        <button
+                          type='button'
+                          onClick={() => handleEditProduct(product)}
+                          className='font-medium text-emerald-400 transition hover:text-emerald-300'
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type='button'
+                          onClick={() => handleToggleStatus(product)}
+                          className={
+                            product.is_active
+                              ? 'font-medium text-red-400 transition hover:text-red-300'
+                              : 'font-medium text-emerald-400 transition hover:text-emerald-300'
+                          }
+                        >
+                          {product.is_active ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
