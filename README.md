@@ -43,15 +43,19 @@ Actualmente están implementadas las bases de:
 - autorización y aislamiento por tenant para Business;
 - autorización y aislamiento por tenant para User;
 - autorización y aislamiento por tenant para Product;
+- autorización y aislamiento por tenant para Customer;
 - listado de Business limitado al tenant autenticado;
 - listado de Users limitado al tenant autenticado;
 - listado de Products limitado al tenant autenticado;
+- listado de Customers limitado al tenant autenticado;
 - consulta y actualización de Business protegidas mediante comprobación same-business;
 - consulta y actualización de User protegidas mediante comprobación same-business;
 - consulta, actualización y ciclo de vida de Product protegidos mediante comprobación same-business;
+- consulta, actualización y ciclo de vida de Customer protegidos mediante comprobación same-business;
 - ocultación de recursos cross-tenant mediante `404 Not Found`;
 - creación de usuarios asociada internamente al tenant autenticado;
 - creación de productos asociada internamente al tenant autenticado;
+- creación de clientes asociada internamente al tenant autenticado;
 - contratos HTTP estrictos para impedir la modificación de campos sensibles;
 - dominio Product;
 - relación Business → Products;
@@ -61,6 +65,14 @@ Actualmente están implementadas las bases de:
 - ciclo de vida lógico de Product;
 - endpoints específicos de activación y desactivación de Product;
 - suite de aislamiento multi-tenant para Product;
+- dominio Customer;
+- relación Business → Customers;
+- identificación fiscal opcional para Customer;
+- unicidad de `tax_id` de Customer dentro de cada Business;
+- repository, service y API de Customer;
+- ciclo de vida lógico de Customer;
+- endpoints específicos de activación y desactivación de Customer;
+- suite de aislamiento multi-tenant para Customer;
 - frontend inicial con React, TypeScript, Vite y Tailwind CSS;
 - autenticación del frontend mediante JWT;
 - envío de Bearer Token a la API;
@@ -73,14 +85,16 @@ Actualmente están implementadas las bases de:
 La suite automatizada cuenta actualmente con:
 
 ```text
-153 passed, 1 warning
+201 passed, 1 warning
 ```
 
 Existe un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
 
-El vertical slice de **Product** dispone actualmente de backend probado e integración frontend funcional.
+Los vertical slices backend de **Product** y **Customer** están implementados y probados.
 
-El siguiente dominio principal será **Customer**.
+Product dispone además de integración frontend funcional.
+
+El siguiente paso principal será incorporar **Customer al frontend** para completar su vertical slice end-to-end.
 
 ---
 
@@ -287,7 +301,8 @@ verifactu-app/
 │   │       ├── e4eb415b0211_add_is_active_to_businesses.py
 │   │       ├── a23de07e7fb2_create_users_table.py
 │   │       ├── 666e0bbbf372_enforce_case_insensitive_user_email_.py
-│   │       └── 40cc09359304_create_products_table.py
+│   │       ├── 40cc09359304_create_products_table.py
+│   │       └── 42772bf4e57d_create_customers_table.py
 │   │
 │   ├── app/
 │   │   ├── api/
@@ -298,6 +313,7 @@ verifactu-app/
 │   │   │   └── routes/
 │   │   │       ├── auth.py
 │   │   │       ├── business.py
+│   │   │       ├── customer.py
 │   │   │       ├── product.py
 │   │   │       └── user.py
 │   │   │
@@ -317,6 +333,13 @@ verifactu-app/
 │   │   │   │   └── service.py
 │   │   │   │
 │   │   │   ├── business/
+│   │   │   │   ├── model.py
+│   │   │   │   ├── repository.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── service.py
+│   │   │   │
+│   │   │   ├── customer/
+│   │   │   │   ├── __init__.py
 │   │   │   │   ├── model.py
 │   │   │   │   ├── repository.py
 │   │   │   │   ├── schemas.py
@@ -346,6 +369,9 @@ verifactu-app/
 │   │   ├── test_business_api.py
 │   │   ├── test_business_repository.py
 │   │   ├── test_business_service.py
+│   │   ├── test_customer_api.py
+│   │   ├── test_customer_repository.py
+│   │   ├── test_customer_service.py
 │   │   ├── test_health.py
 │   │   ├── test_identity.py
 │   │   ├── test_product_api.py
@@ -365,10 +391,13 @@ verifactu-app/
     │   ├── components/
     │   │   └── ProductForm.tsx
     │   ├── pages/
+    │   │   ├── LoginPage.tsx
     │   │   └── ProductsPage.tsx
     │   ├── services/
+    │   │   ├── auth.ts
     │   │   └── product.ts
     │   └── types/
+    │       ├── auth.ts
     │       └── product.ts
     ├── package.json
     └── vite.config.ts
@@ -447,12 +476,13 @@ e4eb415b0211_add_is_active_to_businesses.py
 a23de07e7fb2_create_users_table.py
 666e0bbbf372_enforce_case_insensitive_user_email_.py
 40cc09359304_create_products_table.py
+42772bf4e57d_create_customers_table.py
 ```
 
 La revisión actual es:
 
 ```text
-40cc09359304 (head)
+42772bf4e57d (head)
 ```
 
 Para aplicar las migraciones:
@@ -502,14 +532,14 @@ created_at
 updated_at
 ```
 
-Una empresa puede tener múltiples usuarios y productos.
+Una empresa puede tener múltiples usuarios, productos y clientes.
 
 ```text
 Business
    │
    ├── Users
-   │
-   └── Products
+   ├── Products
+   └── Customers
 ```
 
 El ciclo de vida utiliza desactivación lógica.
@@ -723,6 +753,154 @@ is_active
 
 ---
 
+# Dominio Customer
+
+Cada cliente pertenece exactamente a una empresa mediante:
+
+```text
+business_id
+```
+
+Campos actuales:
+
+```text
+id
+business_id
+tax_id
+legal_name
+trade_name
+address
+postal_code
+city
+province
+country_code
+email
+phone
+is_active
+created_at
+updated_at
+```
+
+La relación es:
+
+```text
+Business
+   │
+   └── Customers
+```
+
+## Identificación fiscal
+
+`tax_id` es opcional en el modelo actual del MVP.
+
+Esto permite crear clientes ligeros sin identificación fiscal cuando todavía no se dispone de todos sus datos.
+
+Cuando existe, su unicidad se aplica dentro del Business:
+
+```text
+(business_id, tax_id)
+```
+
+Por tanto:
+
+- dos clientes del mismo Business no pueden compartir el mismo `tax_id`;
+- dos Businesses distintos sí pueden utilizar el mismo `tax_id`;
+- pueden existir múltiples clientes sin `tax_id`.
+
+La restricción está reforzada en PostgreSQL mediante un índice único compuesto:
+
+```text
+uq_customers_business_id_tax_id
+```
+
+La comparación de `tax_id` es actualmente exacta.
+
+En esta fase no se implementa todavía una validación fiscal completa de NIF, NIE o CIF. Las validaciones fiscales necesarias se incorporarán cuando el dominio de facturación determine los requisitos concretos del receptor de cada tipo de factura.
+
+## Datos del cliente
+
+`legal_name` es obligatorio.
+
+El resto de información comercial y de contacto puede completarse progresivamente:
+
+```text
+trade_name
+address
+postal_code
+city
+province
+email
+phone
+```
+
+`country_code` utiliza actualmente:
+
+```text
+ES
+```
+
+como valor por defecto y exige técnicamente una longitud de dos caracteres.
+
+La disponibilidad de un Customer en el sistema no implica por sí sola que sus datos sean suficientes para cualquier tipo de factura. Las reglas correspondientes se validarán en el futuro dominio Invoice.
+
+## Ciclo de vida
+
+Customer utiliza desactivación lógica mediante:
+
+```text
+is_active
+```
+
+No existe un `DELETE /customers/{customer_id}` ordinario.
+
+El ciclo de vida se gestiona mediante endpoints específicos:
+
+```text
+PATCH /customers/{customer_id}/activate
+PATCH /customers/{customer_id}/deactivate
+```
+
+El campo `is_active` no puede modificarse mediante el `PATCH /customers/{customer_id}` ordinario.
+
+## Aislamiento por tenant
+
+La creación HTTP de Customer no acepta `business_id`.
+
+El tenant se obtiene internamente mediante:
+
+```python
+current_user.business_id
+```
+
+El listado:
+
+```text
+GET /customers
+```
+
+devuelve exclusivamente los clientes del Business autenticado.
+
+Las operaciones sobre un cliente concreto aplican comprobación same-business.
+
+Los intentos de consultar, modificar, activar o desactivar clientes pertenecientes a otro tenant devuelven:
+
+```text
+404 Not Found
+```
+
+para no revelar la existencia del recurso.
+
+El contrato `CustomerUpdate` es estricto y no permite introducir campos no declarados como:
+
+```text
+business_id
+is_active
+```
+
+La implementación actual dispone de Repository, Service y API protegida, junto con tests específicos de persistencia, reglas de negocio, autenticación, lifecycle y aislamiento multi-tenant.
+
+---
+
 # Normalización e identidad del email
 
 El email funciona como identificador global de usuario para el MVP.
@@ -926,6 +1104,7 @@ Este modelo se aplica actualmente a:
 Business
 User
 Product
+Customer
 ```
 
 ### Business
@@ -987,6 +1166,29 @@ Un usuario autenticado:
 - no puede modificar `business_id` mediante el `PATCH` ordinario;
 - no puede modificar `is_active` mediante el `PATCH` ordinario;
 - recibe `404 Not Found` al intentar operar sobre productos de otro tenant.
+
+### Customer
+
+```text
+POST  /customers
+GET   /customers
+GET   /customers/{customer_id}
+PATCH /customers/{customer_id}
+PATCH /customers/{customer_id}/activate
+PATCH /customers/{customer_id}/deactivate
+```
+
+Un usuario autenticado:
+
+- puede crear clientes únicamente dentro de su propio tenant;
+- no puede proporcionar arbitrariamente otro `business_id`;
+- solo puede listar clientes pertenecientes a su propia empresa;
+- puede consultar únicamente clientes de su propia empresa;
+- puede actualizar únicamente clientes de su propia empresa;
+- puede activar o desactivar únicamente clientes de su propia empresa;
+- no puede modificar `business_id` mediante el `PATCH` ordinario;
+- no puede modificar `is_active` mediante el `PATCH` ordinario;
+- recibe `404 Not Found` al intentar operar sobre clientes de otro tenant.
 
 ---
 
@@ -1093,6 +1295,57 @@ PATCH /products/{product_id}/activate
 PATCH /products/{product_id}/deactivate
 ```
 
+## Customers
+
+```text
+POST  /customers
+GET   /customers
+GET   /customers/{customer_id}
+PATCH /customers/{customer_id}
+PATCH /customers/{customer_id}/activate
+PATCH /customers/{customer_id}/deactivate
+```
+
+Todos los endpoints de Customer requieren autenticación.
+
+`POST /customers` deriva `business_id` del tenant autenticado y no permite que el cliente seleccione otra empresa.
+
+`GET /customers` devuelve exclusivamente los clientes del Business autenticado.
+
+Las operaciones sobre clientes concretos aplican aislamiento same-business.
+
+Los intentos de acceso cross-tenant devuelven:
+
+```text
+404 Not Found
+```
+
+Los `tax_id` duplicados dentro del mismo Business producen:
+
+```text
+409 Conflict
+```
+
+El mismo `tax_id` puede existir en Businesses diferentes.
+
+También pueden existir múltiples clientes sin `tax_id`.
+
+Los campos:
+
+```text
+business_id
+is_active
+```
+
+no forman parte del contrato ordinario de actualización de Customer y son rechazados si se intentan proporcionar mediante `PATCH /customers/{customer_id}`.
+
+El ciclo de vida se gestiona explícitamente mediante:
+
+```text
+PATCH /customers/{customer_id}/activate
+PATCH /customers/{customer_id}/deactivate
+```
+
 ---
 
 # Frontend
@@ -1165,6 +1418,20 @@ El frontend no modifica directamente `business_id` ni `is_active`.
 
 El tenant se resuelve siempre en backend a partir del usuario autenticado y el ciclo de vida utiliza los endpoints específicos de activación/desactivación.
 
+## Clientes
+
+El backend de Customer está completado y expone las operaciones necesarias para incorporar su interfaz.
+
+La integración frontend de Customer es el siguiente paso del proyecto e incluirá:
+
+- listado de clientes;
+- creación;
+- edición;
+- visualización del estado activo/inactivo;
+- activación;
+- desactivación;
+- consumo de los endpoints protegidos mediante JWT.
+
 ## Calidad frontend
 
 El frontend ha superado:
@@ -1205,14 +1472,17 @@ Actualmente están implementadas las siguientes medidas:
 - protección de los endpoints públicos de Business;
 - protección de los endpoints públicos de User;
 - protección de los endpoints públicos de Product;
+- protección de los endpoints públicos de Customer;
 - ocultación de recursos cross-tenant mediante `404 Not Found`;
-- listados de Business, User y Product limitados al tenant autenticado;
-- creación ordinaria de User y Product ligada al tenant autenticado;
+- listados de Business, User, Product y Customer limitados al tenant autenticado;
+- creación ordinaria de User, Product y Customer ligada al tenant autenticado;
 - rechazo de `business_id` arbitrario en los contratos HTTP correspondientes;
 - rechazo de campos no declarados en contratos de actualización;
 - protección frente a modificaciones ordinarias de atributos sensibles;
 - operaciones explícitas de ciclo de vida de Product;
 - protección multi-tenant de activación/desactivación de Product;
+- operaciones explícitas de ciclo de vida de Customer;
+- protección multi-tenant de activación/desactivación de Customer;
 - registro/bootstrap transaccional;
 - rollback completo si falla la creación del Business o del primer User.
 
@@ -1240,7 +1510,7 @@ pytest -q
 Estado actual:
 
 ```text
-153 passed, 1 warning
+201 passed, 1 warning
 ```
 
 El warning conocido es:
@@ -1297,9 +1567,29 @@ La suite cubre actualmente, entre otros:
 - eliminación opcional del SKU mediante `null`;
 - activación y desactivación de Product;
 - protección de activación/desactivación mediante autenticación;
-- aislamiento cross-tenant de las operaciones de ciclo de vida;
+- aislamiento cross-tenant de las operaciones de ciclo de vida de Product;
 - respuesta `404` para productos inexistentes o pertenecientes a otro tenant;
-- comportamiento transaccional de Product sin `commit()`.
+- comportamiento transaccional de Product sin `commit()`;
+- repository de Customer;
+- service de Customer;
+- API de Customer;
+- creación de Customer dentro del tenant autenticado;
+- rechazo de `business_id` arbitrario en Customer;
+- aislamiento del listado de Customer por tenant;
+- consulta de Customer del tenant propio;
+- rechazo de consultas cross-tenant de Customer;
+- actualización de Customer del tenant propio;
+- rechazo de actualizaciones cross-tenant de Customer;
+- rechazo de `business_id` e `is_active` en `PATCH` de Customer;
+- `tax_id` duplicado dentro del mismo Business;
+- mismo `tax_id` permitido en Businesses diferentes;
+- múltiples clientes sin `tax_id`;
+- eliminación opcional del `tax_id` mediante `null`;
+- activación y desactivación de Customer;
+- protección de activación/desactivación de Customer mediante autenticación;
+- aislamiento cross-tenant de las operaciones de ciclo de vida de Customer;
+- respuesta `404` para clientes inexistentes o pertenecientes a otro tenant;
+- comportamiento transaccional de Customer sin `commit()`.
 
 La fase Product incorpora actualmente:
 
@@ -1309,6 +1599,16 @@ La fase Product incorpora actualmente:
 16 tests Service
 -------------------
 45 tests Product
+```
+
+La fase Customer incorpora actualmente:
+
+```text
+23 tests API
+ 8 tests Repository
+17 tests Service
+-------------------
+48 tests Customer
 ```
 
 ---
@@ -1343,7 +1643,11 @@ ruff check . --fix
 
 indiscriminado sobre todo el proyecto.
 
-La deuda de lint se tratará como una tarea independiente para evitar introducir cambios masivos de estilo en commits funcionales.
+Los archivos de dominio y tests incorporados para Customer han superado la comprobación dirigida de Ruff.
+
+La migración de Customer también ha sido normalizada mediante Ruff de forma aislada.
+
+La deuda de lint restante se tratará como una tarea independiente para evitar introducir cambios masivos de estilo en commits funcionales.
 
 ---
 
@@ -1641,20 +1945,24 @@ y no números de coma flotante.
 
 ## Fase 7 — Customers
 
-- [ ] modelo Customer
-- [ ] migración Alembic
-- [ ] relación Business → Customers
-- [ ] schemas
-- [ ] repository
-- [ ] service
-- [ ] API
-- [ ] autenticación
-- [ ] aislamiento multi-tenant
-- [ ] contratos HTTP estrictos
-- [ ] tests Repository
-- [ ] tests Service
-- [ ] tests API
-- [ ] tests cross-tenant
+- [x] modelo Customer
+- [x] migración Alembic
+- [x] relación Business → Customers
+- [x] schemas
+- [x] repository
+- [x] service
+- [x] API
+- [x] autenticación
+- [x] aislamiento multi-tenant
+- [x] contratos HTTP estrictos
+- [x] activación/desactivación lógica
+- [x] endpoints de activación/desactivación
+- [x] aislamiento multi-tenant del ciclo de vida
+- [x] tests Repository
+- [x] tests Service
+- [x] tests API
+- [x] tests cross-tenant
+- [x] vertical slice backend completado
 - [ ] integración frontend
 
 ## Fase 8 — Invoicing
@@ -1695,21 +2003,14 @@ y no números de coma flotante.
 
 # Próximos pasos
 
-El primer vertical slice completo de la aplicación conecta actualmente:
+El proyecto dispone actualmente de dos vertical slices backend principales:
 
 ```text
-React
-  ↓
-FastAPI
-  ↓
-Service
-  ↓
-Repository
-  ↓
-PostgreSQL
+Product
+Customer
 ```
 
-El flujo de Product permite:
+Product ya completa además el recorrido frontend:
 
 ```text
 Login
@@ -1723,9 +2024,7 @@ Editar producto
 Activar / desactivar producto
 ```
 
-Esto proporciona una primera funcionalidad end-to-end sobre la que continuar construyendo la aplicación.
-
-El siguiente dominio principal será **Customer**, siguiendo el mismo enfoque vertical:
+Customer dispone actualmente de:
 
 ```text
 modelo y migración
@@ -1736,23 +2035,36 @@ service
     ↓
 API
     ↓
-tests
+autenticación
     ↓
-frontend
+aislamiento multi-tenant
+    ↓
+ciclo de vida
+    ↓
+tests
 ```
 
-Customer deberá aplicar desde el principio los patrones ya establecidos en Product:
+El siguiente paso será completar el vertical slice de **Customer** mediante su integración frontend:
 
-- pertenencia a `Business`;
-- aislamiento multi-tenant;
-- contratos HTTP estrictos;
-- ocultación cross-tenant mediante `404`;
-- tipos y validaciones de dominio;
-- separación Router → Service → Repository;
-- tests de repository, service y API;
-- integración con el frontend.
+```text
+Customer backend
+    ↓
+tipos TypeScript
+    ↓
+servicio HTTP
+    ↓
+formulario
+    ↓
+listado
+    ↓
+edición
+    ↓
+activación / desactivación
+    ↓
+build y lint
+```
 
-Después de Customer comenzará el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
+Una vez completada la gestión end-to-end de Customer, comenzará el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
 
 Las mejoras de routing, layout, experiencia de usuario y arquitectura frontend se irán incorporando progresivamente a medida que aparezcan nuevas pantallas y dominios.
 
@@ -1763,24 +2075,30 @@ Las mejoras de routing, layout, experiencia de usuario y arquitectura frontend s
 En el checkpoint actual:
 
 ```text
-Backend tests:     153 passed, 1 warning
-Product API tests: 22 passed
-Product tests:     45 passed
-Alembic:           synchronized
-Database head:     40cc09359304
-Email identity:    case-insensitive
-Registration:      atomic bootstrap implemented
-Business API:      tenant-protected
-User API:          tenant-protected
-Product API:       tenant-protected
-Product lifecycle: HTTP + tenant-protected
-Tenant model:      Business/User/Product isolation
-Auth/Authz:        initial phase completed
-Product backend:   vertical slice completed
-Product frontend:  create/read/update/lifecycle integrated
-Frontend build:    passing
-Frontend lint:     passing
-Next domain:       Customer
+Backend tests:      201 passed, 1 warning
+Product API tests:  22 passed
+Product tests:      45 passed
+Customer API tests: 23 passed
+Customer tests:     48 passed
+Alembic:            synchronized
+Database head:      42772bf4e57d
+Email identity:     case-insensitive
+Registration:       atomic bootstrap implemented
+Business API:       tenant-protected
+User API:           tenant-protected
+Product API:        tenant-protected
+Customer API:       tenant-protected
+Product lifecycle:  HTTP + tenant-protected
+Customer lifecycle: HTTP + tenant-protected
+Tenant model:       Business/User/Product/Customer isolation
+Auth/Authz:         initial phase completed
+Product backend:    vertical slice completed
+Product frontend:   create/read/update/lifecycle integrated
+Customer backend:   vertical slice completed
+Customer frontend:  pending
+Frontend build:     passing
+Frontend lint:      passing
+Next step:          Customer frontend
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:

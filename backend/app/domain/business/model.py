@@ -80,6 +80,11 @@ class Business(Base):
     )
 
     products = relationship(
-    "Product",
-    back_populates="business",
-)
+        "Product",
+        back_populates="business",
+    )
+
+    customers = relationship(
+        "Customer",
+        back_populates="business",
+    )
