@@ -80,6 +80,10 @@ Actualmente están implementadas las bases de:
 - creación de productos;
 - edición de productos;
 - activación y desactivación de productos;
+- listado de clientes;
+- creación de clientes;
+- edición de clientes;
+- activación y desactivación de clientes;
 - integración funcional frontend → FastAPI → PostgreSQL.
 
 La suite automatizada cuenta actualmente con:
@@ -90,11 +94,11 @@ La suite automatizada cuenta actualmente con:
 
 Existe un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
 
-Los vertical slices backend de **Product** y **Customer** están implementados y probados.
+Los vertical slices de **Product** y **Customer** están implementados y probados de extremo a extremo.
 
-Product dispone además de integración frontend funcional.
+Ambos dominios disponen de integración frontend funcional contra la API protegida y PostgreSQL.
 
-El siguiente paso principal será incorporar **Customer al frontend** para completar su vertical slice end-to-end.
+El siguiente paso principal será comenzar el dominio **Invoice**, que servirá como base del núcleo de facturación del MVP.
 
 ---
 
@@ -184,20 +188,24 @@ El frontend consume actualmente la API REST desarrollada con FastAPI.
 
 La autenticación utiliza JWT mediante Bearer Token. El token de acceso se mantiene en el cliente y se incorpora a las peticiones dirigidas a endpoints protegidos.
 
-Actualmente existe un primer flujo funcional:
+Actualmente existen dos flujos funcionales principales:
 
 ```text
 Login
   ↓
 Autenticación JWT
   ↓
-Listado de productos
+Productos
+  ├── listar
+  ├── crear
+  ├── editar
+  └── activar / desactivar
   ↓
-Crear producto
-  ↓
-Editar producto
-  ↓
-Activar / desactivar producto
+Clientes
+  ├── listar
+  ├── crear
+  ├── editar
+  └── activar / desactivar
 ```
 
 La integración:
@@ -389,16 +397,21 @@ verifactu-app/
 └── frontend/
     ├── src/
     │   ├── components/
+    │   │   ├── CustomerForm.tsx
     │   │   └── ProductForm.tsx
     │   ├── pages/
+    │   │   ├── CustomerPage.tsx
     │   │   ├── LoginPage.tsx
     │   │   └── ProductsPage.tsx
     │   ├── services/
     │   │   ├── auth.ts
+    │   │   ├── customer.ts
     │   │   └── product.ts
-    │   └── types/
-    │       ├── auth.ts
-    │       └── product.ts
+    │   ├── types/
+    │   │   ├── auth.ts
+    │   │   ├── customer.ts
+    │   │   └── product.ts
+    │   └── App.tsx
     ├── package.json
     └── vite.config.ts
 ```
@@ -1359,7 +1372,7 @@ Vite
 Tailwind CSS
 ```
 
-El objetivo del primer vertical slice frontend ha sido consumir funcionalidad real del backend antes de ampliar la interfaz a otros dominios.
+El objetivo del frontend en esta fase ha sido consumir funcionalidad real del backend antes de ampliar la interfaz hacia facturación y VERI\*FACTU.
 
 ## Autenticación
 
@@ -1420,17 +1433,60 @@ El tenant se resuelve siempre en backend a partir del usuario autenticado y el c
 
 ## Clientes
 
-El backend de Customer está completado y expone las operaciones necesarias para incorporar su interfaz.
+La interfaz de clientes permite actualmente:
 
-La integración frontend de Customer es el siguiente paso del proyecto e incluirá:
+- cargar los clientes del tenant autenticado;
+- mostrar estados de carga;
+- mostrar errores de comunicación con la API;
+- mostrar el estado vacío;
+- crear clientes;
+- editar clientes existentes;
+- mostrar razón social y nombre comercial;
+- mostrar `tax_id`;
+- mostrar localidad y provincia;
+- mostrar email y teléfono;
+- mostrar estado activo/inactivo;
+- activar clientes;
+- desactivar clientes;
+- consumir los endpoints protegidos mediante JWT.
 
-- listado de clientes;
-- creación;
-- edición;
-- visualización del estado activo/inactivo;
-- activación;
-- desactivación;
-- consumo de los endpoints protegidos mediante JWT.
+La creación y edición utilizan un formulario reutilizable:
+
+```text
+CustomerForm
+```
+
+que decide entre:
+
+```text
+POST /customers
+```
+
+y:
+
+```text
+PATCH /customers/{customer_id}
+```
+
+dependiendo de si existe un cliente en edición.
+
+El frontend no modifica directamente `business_id` ni `is_active`.
+
+El tenant se resuelve siempre en backend a partir del usuario autenticado y el ciclo de vida utiliza los endpoints específicos de activación/desactivación.
+
+La integración se ha validado manualmente de extremo a extremo mediante:
+
+```text
+listar
+  ↓
+crear
+  ↓
+editar
+  ↓
+desactivar
+  ↓
+activar
+```
 
 ## Calidad frontend
 
@@ -1963,7 +2019,7 @@ y no números de coma flotante.
 - [x] tests API
 - [x] tests cross-tenant
 - [x] vertical slice backend completado
-- [ ] integración frontend
+- [x] integración frontend
 
 ## Fase 8 — Invoicing
 
@@ -2003,68 +2059,34 @@ y no números de coma flotante.
 
 # Próximos pasos
 
-El proyecto dispone actualmente de dos vertical slices backend principales:
+El proyecto dispone actualmente de dos vertical slices principales completados de extremo a extremo:
 
 ```text
 Product
 Customer
 ```
 
-Product ya completa además el recorrido frontend:
+Ambos recorren actualmente:
 
 ```text
 Login
   ↓
-Listar productos
+Autenticación JWT
   ↓
-Crear producto
+Frontend React
   ↓
-Editar producto
+API FastAPI protegida
   ↓
-Activar / desactivar producto
+Service / Repository
+  ↓
+PostgreSQL
 ```
 
-Customer dispone actualmente de:
+Product permite listar, crear, editar y gestionar su ciclo de vida.
 
-```text
-modelo y migración
-    ↓
-repository
-    ↓
-service
-    ↓
-API
-    ↓
-autenticación
-    ↓
-aislamiento multi-tenant
-    ↓
-ciclo de vida
-    ↓
-tests
-```
+Customer permite listar, crear, editar y gestionar su ciclo de vida, con aislamiento por tenant y persistencia real verificados manualmente desde el navegador.
 
-El siguiente paso será completar el vertical slice de **Customer** mediante su integración frontend:
-
-```text
-Customer backend
-    ↓
-tipos TypeScript
-    ↓
-servicio HTTP
-    ↓
-formulario
-    ↓
-listado
-    ↓
-edición
-    ↓
-activación / desactivación
-    ↓
-build y lint
-```
-
-Una vez completada la gestión end-to-end de Customer, comenzará el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
+El siguiente paso será comenzar el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
 
 Las mejoras de routing, layout, experiencia de usuario y arquitectura frontend se irán incorporando progresivamente a medida que aparezcan nuevas pantallas y dominios.
 
@@ -2095,10 +2117,11 @@ Auth/Authz:         initial phase completed
 Product backend:    vertical slice completed
 Product frontend:   create/read/update/lifecycle integrated
 Customer backend:   vertical slice completed
-Customer frontend:  pending
+Customer frontend:  create/read/update/lifecycle integrated
 Frontend build:     passing
 Frontend lint:      passing
-Next step:          Customer frontend
+End-to-end Customer: manually verified
+Next step:          Invoice domain
 ```
 
 El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:
