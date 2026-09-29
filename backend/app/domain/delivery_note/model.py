@@ -1,14 +1,14 @@
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 
-class Order(Base):
-    __tablename__ = "orders"
+class DeliveryNote(Base):
+    __tablename__ = "delivery_notes"
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -20,8 +20,8 @@ class Order(Base):
         index=True,
     )
 
-    customer_id: Mapped[int] = mapped_column(
-        ForeignKey("customers.id"),
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id"),
         nullable=False,
         index=True,
     )
@@ -33,30 +33,14 @@ class Order(Base):
         server_default="DRAFT",
     )
 
+    delivery_date: Mapped[date] = mapped_column(
+        Date,
+        nullable=False,
+    )
+
     notes: Mapped[str | None] = mapped_column(
         String(1000),
         nullable=True,
-    )
-
-    subtotal: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-        default=Decimal("0.00"),
-        server_default="0.00",
-    )
-
-    tax_total: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-        default=Decimal("0.00"),
-        server_default="0.00",
-    )
-
-    total_amount: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-        default=Decimal("0.00"),
-        server_default="0.00",
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -79,42 +63,37 @@ class Order(Base):
 
     business = relationship(
         "Business",
-        back_populates="orders",
+        back_populates="delivery_notes",
     )
 
-    customer = relationship(
-        "Customer",
-        back_populates="orders",
+    order = relationship(
+        "Order",
+        back_populates="delivery_notes",
     )
 
     lines = relationship(
-        "OrderLine",
-        back_populates="order",
+        "DeliveryNoteLine",
+        back_populates="delivery_note",
         cascade="all, delete-orphan",
-        order_by="OrderLine.position",
-    )
-
-    delivery_notes = relationship(
-        "DeliveryNote",
-        back_populates="order",
+        order_by="DeliveryNoteLine.position",
     )
 
 
-class OrderLine(Base):
-    __tablename__ = "order_lines"
+class DeliveryNoteLine(Base):
+    __tablename__ = "delivery_note_lines"
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
     )
 
-    order_id: Mapped[int] = mapped_column(
-        ForeignKey("orders.id"),
+    delivery_note_id: Mapped[int] = mapped_column(
+        ForeignKey("delivery_notes.id"),
         nullable=False,
         index=True,
     )
 
-    product_id: Mapped[int] = mapped_column(
-        ForeignKey("products.id"),
+    order_line_id: Mapped[int] = mapped_column(
+        ForeignKey("order_lines.id"),
         nullable=False,
         index=True,
     )
@@ -139,23 +118,7 @@ class OrderLine(Base):
         nullable=False,
     )
 
-    base_amount: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-    )
-
-    tax_amount: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-    )
-
-    total_amount: Mapped[Decimal] = mapped_column(
-        Numeric(14, 2),
-        nullable=False,
-    )
-
     position: Mapped[int] = mapped_column(
-        Integer,
         nullable=False,
     )
 
@@ -165,17 +128,12 @@ class OrderLine(Base):
         nullable=False,
     )
 
-    order = relationship(
-        "Order",
+    delivery_note = relationship(
+        "DeliveryNote",
         back_populates="lines",
     )
 
-    product = relationship(
-        "Product",
-        back_populates="order_lines",
+    order_line = relationship(
+        "OrderLine",
+        back_populates="delivery_note_lines",
     )
-
-    delivery_note_lines = relationship(
-    "DeliveryNoteLine",
-    back_populates="order_line",
-)

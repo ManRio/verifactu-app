@@ -93,3 +93,8 @@ class Business(Base):
         "Order",
         back_populates="business",
     )
+
+    delivery_notes = relationship(
+    "DeliveryNote",
+    back_populates="business",
+)
