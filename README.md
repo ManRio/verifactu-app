@@ -46,7 +46,7 @@ El warning conocido procede de la integración entre `Starlette TestClient` y `h
 
 Los vertical slices de **Product** y **Customer** están implementados de extremo a extremo, incluido frontend.
 
-El vertical slice backend de **Order** está implementado y probado. El siguiente paso funcional será integrar Pedidos en el frontend antes de avanzar al dominio **Delivery Note / Albarán**.
+El vertical slice de **Order** está implementado y probado de extremo a extremo, incluido el frontend React. El flujo manual de creación, edición, confirmación y cancelación de pedidos ha sido validado. El siguiente paso funcional será comenzar el dominio **Delivery Note / Albarán**.
 
 ---
 
@@ -611,7 +611,7 @@ Actualmente están integrados:
 - listado, creación, edición y lifecycle de Products;
 - listado, creación, edición y lifecycle de Customers.
 
-El backend de Orders ya está implementado. La integración frontend de Order es el siguiente paso inmediato y deberá permitir:
+El backend de Orders ya está implementado. La integración frontend de Order está implementada y permite:
 
 - listar pedidos;
 - crear un borrador;
@@ -826,7 +826,7 @@ Los importes monetarios utilizarán `Decimal` / `NUMERIC`, no tipos de coma flot
 - [x] tests Service
 - [x] tests API
 - [x] suite completa
-- [ ] integración frontend
+- [x] integración frontend
 
 ## Fase 8B — Delivery Notes / Albaranes
 
@@ -897,15 +897,27 @@ Estado de los vertical slices principales:
 ```text
 Product  → backend + frontend
 Customer → backend + frontend
-Order    → backend completo
+Order    → backend + frontend
+```
+
+El vertical slice de Order está completado de extremo a extremo:
+
+```text
+Order
+  ↓
+React frontend
+  ↓
+FastAPI
+  ↓
+Service / Repository
+  ↓
+PostgreSQL
 ```
 
 Siguiente paso inmediato:
 
 ```text
-Order frontend
-     ↓
-Delivery Note backend
+Delivery Note / Albarán backend
      ↓
 Delivery Note frontend
      ↓
@@ -946,7 +958,7 @@ Order API:             tenant-protected
 Product frontend:      integrated
 Customer frontend:     integrated
 Order backend:         vertical slice completed
-Order frontend:        next step
+Order frontend:        integrated and manually verified
 
 Frontend build:        passing
 Frontend lint:         passing
