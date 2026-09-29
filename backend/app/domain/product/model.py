@@ -70,6 +70,11 @@ class Product(Base):
         back_populates="products",
     )
 
+    order_lines = relationship(
+        "OrderLine",
+        back_populates="product",
+    )
+
     __table_args__ = (
         Index(
             "uq_products_business_id_sku",

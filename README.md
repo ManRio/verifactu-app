@@ -1,133 +1,108 @@
 # VeriFactu App
 
-Aplicación web de facturación orientada a pequeños negocios y autónomos, desarrollada como proyecto de portfolio con una arquitectura preparada para incorporar los requisitos de **VERI\*FACTU**.
+Aplicación web de gestión comercial y facturación orientada a pequeños negocios y autónomos, desarrollada como proyecto de portfolio con una arquitectura preparada para evolucionar hacia los requisitos de **VERI\*FACTU**.
 
-El objetivo es construir una solución ligera y mantenible para negocios que necesitan gestionar productos, clientes y facturas sin recurrir a un ERP o CRM de gran tamaño.
+El objetivo es construir una solución ligera y mantenible para negocios que necesitan gestionar clientes, productos, pedidos, entregas, facturación y cobros sin recurrir a un ERP o CRM de gran tamaño.
 
 > [!IMPORTANT]
 > Este proyecto está actualmente en desarrollo y **no debe considerarse todavía una implementación conforme con VERI\*FACTU**.
 >
-> La integración definitiva deberá implementarse y validarse contra las especificaciones técnicas vigentes de la AEAT.
+> La integración fiscal definitiva deberá implementarse y validarse contra las especificaciones técnicas vigentes de la AEAT.
 
 ---
 
 ## Estado actual
 
-El proyecto comenzó con un enfoque **backend-first** para establecer una base sólida de persistencia, autenticación, autorización y aislamiento multi-tenant.
+El proyecto comenzó con un enfoque **backend-first** para establecer una base sólida de persistencia, autenticación, autorización, aislamiento multi-tenant y reglas de negocio.
 
-Actualmente están implementadas las bases de:
+Actualmente están implementados:
 
-- configuración del backend;
-- conexión con PostgreSQL;
-- migraciones con Alembic;
-- dominio de empresas;
-- ciclo de vida lógico de empresas;
-- dominio de usuarios;
-- relación Business → Users;
-- creación y actualización de usuarios;
-- activación y desactivación de usuarios en la capa de dominio;
-- hashing seguro de contraseñas;
-- autenticación de usuarios;
-- generación y validación de JWT;
-- endpoint de login;
-- resolución del usuario autenticado mediante Bearer Token;
-- endpoint `/auth/me`;
-- registro/bootstrap inicial mediante `/auth/register`;
-- creación atómica de Business + primer User;
-- emisión de JWT tras el registro;
-- rollback completo del registro ante fallos;
-- revocación funcional de acceso para usuarios o empresas inactivas;
-- normalización de direcciones de email;
-- búsquedas y autenticación de email sin depender de mayúsculas/minúsculas;
-- unicidad case-insensitive de email en PostgreSQL;
-- autorización y aislamiento por tenant para Business;
-- autorización y aislamiento por tenant para User;
-- autorización y aislamiento por tenant para Product;
-- autorización y aislamiento por tenant para Customer;
-- listado de Business limitado al tenant autenticado;
-- listado de Users limitado al tenant autenticado;
-- listado de Products limitado al tenant autenticado;
-- listado de Customers limitado al tenant autenticado;
-- consulta y actualización de Business protegidas mediante comprobación same-business;
-- consulta y actualización de User protegidas mediante comprobación same-business;
-- consulta, actualización y ciclo de vida de Product protegidos mediante comprobación same-business;
-- consulta, actualización y ciclo de vida de Customer protegidos mediante comprobación same-business;
-- ocultación de recursos cross-tenant mediante `404 Not Found`;
-- creación de usuarios asociada internamente al tenant autenticado;
-- creación de productos asociada internamente al tenant autenticado;
-- creación de clientes asociada internamente al tenant autenticado;
-- contratos HTTP estrictos para impedir la modificación de campos sensibles;
+- configuración del backend con `pydantic-settings`;
+- PostgreSQL y migraciones con Alembic;
+- dominio Business;
+- dominio User;
+- autenticación mediante JWT;
+- registro/bootstrap inicial de Business + primer User;
+- aislamiento multi-tenant;
 - dominio Product;
-- relación Business → Products;
-- precios e impuestos representados mediante tipos decimales exactos;
-- SKU opcional y único dentro de cada Business;
-- repository, service y API de Product;
-- ciclo de vida lógico de Product;
-- endpoints específicos de activación y desactivación de Product;
-- suite de aislamiento multi-tenant para Product;
 - dominio Customer;
-- relación Business → Customers;
-- identificación fiscal opcional para Customer;
-- unicidad de `tax_id` de Customer dentro de cada Business;
-- repository, service y API de Customer;
-- ciclo de vida lógico de Customer;
-- endpoints específicos de activación y desactivación de Customer;
-- suite de aislamiento multi-tenant para Customer;
-- frontend inicial con React, TypeScript, Vite y Tailwind CSS;
-- autenticación del frontend mediante JWT;
-- envío de Bearer Token a la API;
-- listado de productos;
-- creación de productos;
-- edición de productos;
-- activación y desactivación de productos;
-- listado de clientes;
-- creación de clientes;
-- edición de clientes;
-- activación y desactivación de clientes;
-- integración funcional frontend → FastAPI → PostgreSQL.
+- frontend funcional para Product y Customer;
+- dominio Order;
+- líneas de pedido con snapshot de producto;
+- cálculo de base, impuestos y total del pedido;
+- lifecycle `DRAFT → CONFIRMED / CANCELLED`;
+- edición restringida a pedidos en borrador;
+- API protegida de pedidos;
+- aislamiento multi-tenant de pedidos;
+- tests de Repository, Service y API para Order.
 
 La suite automatizada cuenta actualmente con:
 
 ```text
-201 passed, 1 warning
+260 passed, 1 warning
 ```
 
-Existe un warning conocido relacionado con la integración entre `Starlette TestClient` y `httpx`. Actualmente no afecta al funcionamiento ni a los tests del proyecto y se tratará como deuda técnica separada.
+El warning conocido procede de la integración entre `Starlette TestClient` y `httpx`. No afecta actualmente al funcionamiento de la aplicación ni al resultado de los tests y se mantiene como deuda técnica separada.
 
-Los vertical slices de **Product** y **Customer** están implementados y probados de extremo a extremo.
+Los vertical slices de **Product** y **Customer** están implementados de extremo a extremo, incluido frontend.
 
-Ambos dominios disponen de integración frontend funcional contra la API protegida y PostgreSQL.
-
-El siguiente paso principal será comenzar el dominio **Invoice**, que servirá como base del núcleo de facturación del MVP.
+El vertical slice backend de **Order** está implementado y probado. El siguiente paso funcional será integrar Pedidos en el frontend antes de avanzar al dominio **Delivery Note / Albarán**.
 
 ---
 
 # Objetivo del proyecto
 
-VeriFactu App pretende cubrir las necesidades básicas de facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura preparada para evolucionar hacia una integración completa con VERI\*FACTU.
+VeriFactu App pretende cubrir las necesidades esenciales de gestión comercial y facturación de pequeños negocios mediante una interfaz sencilla y una arquitectura capaz de evolucionar posteriormente hacia VERI\*FACTU.
 
-El MVP contempla:
+El flujo comercial previsto para el MVP es:
+
+```text
+Cliente
+  ↓
+Pedido
+  ↓
+Albarán / entrega
+  ↓
+Factura
+  ↓
+Pago
+```
+
+Estos conceptos permanecen separados deliberadamente:
+
+- un pedido representa la intención comercial;
+- un albarán representa una entrega;
+- una factura representa el documento de facturación;
+- un pago representa el cobro.
+
+La emisión de una factura no dependerá conceptualmente de que esta se encuentre pagada.
+
+## Alcance previsto del MVP
 
 - gestión de cuenta y negocio;
 - gestión de usuarios;
 - autenticación y autorización;
 - gestión de productos;
 - gestión de clientes;
+- pedidos y líneas de pedido;
+- albaranes y entregas;
+- facturación;
+- pagos;
 - impuestos y precios;
-- facturas completas y simplificadas;
 - numeración de facturas;
+- factura completa y simplificada cuando corresponda;
 - generación de PDF;
 - generación de QR;
-- generación de registros de facturación;
+- registros de facturación;
 - encadenamiento de registros;
 - cálculo de hash según la especificación aplicable;
 - registros de alta;
 - anulación;
 - rectificación y subsanación;
-- envío de registros a la AEAT;
+- integración con AEAT;
 - almacenamiento de respuestas e incidencias;
 - verificación de la cadena de registros;
-- dashboard básico de facturación y estado VERI\*FACTU.
+- dashboard básico de gestión y estado VERI\*FACTU.
 
 ---
 
@@ -184,11 +159,11 @@ Quedan fuera del MVP:
 - Tailwind CSS
 - ESLint
 
-El frontend consume actualmente la API REST desarrollada con FastAPI.
+El frontend consume la API REST desarrollada con FastAPI.
 
 La autenticación utiliza JWT mediante Bearer Token. El token de acceso se mantiene en el cliente y se incorpora a las peticiones dirigidas a endpoints protegidos.
 
-Actualmente existen dos flujos funcionales principales:
+Actualmente existen flujos frontend funcionales para:
 
 ```text
 Login
@@ -208,83 +183,45 @@ Clientes
   └── activar / desactivar
 ```
 
-La integración:
-
-```text
-Frontend
-   ↓
-FastAPI
-   ↓
-PostgreSQL
-```
-
-ha sido verificada manualmente durante el desarrollo.
-
-Para fases posteriores se valorará incorporar:
-
-- TanStack Query
-- React Hook Form
-- Zod
+La integración `Frontend → FastAPI → PostgreSQL` ha sido verificada manualmente para Product y Customer.
 
 ---
 
 # Arquitectura
 
-El backend sigue una separación por responsabilidades.
+El backend sigue una separación explícita por responsabilidades:
 
 ```text
 FastAPI Router
       │
       ▼
-Service
+   Service
       │
       ▼
-Repository
+ Repository
       │
       ▼
-SQLAlchemy
+ SQLAlchemy
       │
       ▼
-PostgreSQL
+ PostgreSQL
 ```
 
-### Router
+## Router
 
-Responsable del contrato HTTP:
+Responsable del contrato HTTP: rutas, parámetros, códigos de estado, serialización, dependencias, autenticación y autorización.
 
-- rutas;
-- parámetros;
-- códigos de estado;
-- serialización;
-- dependencias;
-- autenticación;
-- autorización HTTP.
+## Service
 
-### Service
+Responsable de reglas de negocio, validaciones de dominio, coordinación entre repositorios y límites de transacción.
 
-Responsable de:
-
-- reglas de negocio;
-- validaciones de dominio;
-- coordinación entre repositorios;
-- límites de transacción.
-
-### Repository
+## Repository
 
 Responsable exclusivamente del acceso a datos.
 
-Los repositorios utilizan:
+Los repositorios utilizan `flush()` y `refresh()`, pero no realizan `commit()`.
 
-```python
-flush()
-refresh()
-```
-
-pero no realizan `commit()`.
-
-El límite de la transacción pertenece a la capa de servicio.
-
-Esta decisión es especialmente importante para futuras operaciones de facturación y VERI\*FACTU, donde varias operaciones deberán ejecutarse de forma atómica.
+El límite de la transacción pertenece a la capa de servicio. Esta decisión será especialmente importante en futuras operaciones compuestas de facturación y VERI\*FACTU.
 
 ---
 
@@ -300,9 +237,7 @@ verifactu-app/
 ├── README.md
 │
 ├── backend/
-│   │
 │   ├── alembic/
-│   │   ├── env.py
 │   │   └── versions/
 │   │       ├── f59baa15a544_initial_migration.py
 │   │       ├── 4edaea57d404_create_businesses_table.py
@@ -310,113 +245,50 @@ verifactu-app/
 │   │       ├── a23de07e7fb2_create_users_table.py
 │   │       ├── 666e0bbbf372_enforce_case_insensitive_user_email_.py
 │   │       ├── 40cc09359304_create_products_table.py
-│   │       └── 42772bf4e57d_create_customers_table.py
+│   │       ├── 42772bf4e57d_create_customers_table.py
+│   │       └── 6a6fffec7d19_create_orders_and_order_lines.py
 │   │
 │   ├── app/
 │   │   ├── api/
 │   │   │   ├── dependencies/
-│   │   │   │   ├── auth.py
-│   │   │   │   ├── authorization.py
-│   │   │   │   └── tenant.py
 │   │   │   └── routes/
 │   │   │       ├── auth.py
 │   │   │       ├── business.py
 │   │   │       ├── customer.py
+│   │   │       ├── order.py
 │   │   │       ├── product.py
 │   │   │       └── user.py
-│   │   │
 │   │   ├── core/
-│   │   │   ├── config.py
-│   │   │   ├── identity.py
-│   │   │   └── security.py
-│   │   │
 │   │   ├── db/
-│   │   │   ├── base.py
-│   │   │   ├── models.py
-│   │   │   └── session.py
-│   │   │
 │   │   ├── domain/
 │   │   │   ├── auth/
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── service.py
-│   │   │   │
 │   │   │   ├── business/
-│   │   │   │   ├── model.py
-│   │   │   │   ├── repository.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── service.py
-│   │   │   │
 │   │   │   ├── customer/
+│   │   │   ├── order/
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── model.py
 │   │   │   │   ├── repository.py
 │   │   │   │   ├── schemas.py
 │   │   │   │   └── service.py
-│   │   │   │
 │   │   │   ├── product/
-│   │   │   │   ├── __init__.py
-│   │   │   │   ├── model.py
-│   │   │   │   ├── repository.py
-│   │   │   │   ├── schemas.py
-│   │   │   │   └── service.py
-│   │   │   │
 │   │   │   └── user/
-│   │   │       ├── model.py
-│   │   │       ├── repository.py
-│   │   │       ├── schemas.py
-│   │   │       └── service.py
-│   │   │
 │   │   └── main.py
 │   │
-│   ├── tests/
-│   │   ├── conftest.py
-│   │   ├── test_auth_api.py
-│   │   ├── test_auth_dependencies.py
-│   │   ├── test_auth_service.py
-│   │   ├── test_authorization_dependencies.py
-│   │   ├── test_business_api.py
-│   │   ├── test_business_repository.py
-│   │   ├── test_business_service.py
-│   │   ├── test_customer_api.py
-│   │   ├── test_customer_repository.py
-│   │   ├── test_customer_service.py
-│   │   ├── test_health.py
-│   │   ├── test_identity.py
-│   │   ├── test_product_api.py
-│   │   ├── test_product_repository.py
-│   │   ├── test_product_service.py
-│   │   ├── test_security.py
-│   │   ├── test_tenant_dependencies.py
-│   │   ├── test_user_api.py
-│   │   ├── test_user_repository.py
-│   │   └── test_user_service.py
-│   │
-│   ├── alembic.ini
-│   └── pyproject.toml
+│   └── tests/
+│       ├── test_order_api.py
+│       ├── test_order_repository.py
+│       └── test_order_service.py
 │
 └── frontend/
     ├── src/
     │   ├── components/
-    │   │   ├── CustomerForm.tsx
-    │   │   └── ProductForm.tsx
     │   ├── pages/
-    │   │   ├── CustomerPage.tsx
-    │   │   ├── LoginPage.tsx
-    │   │   └── ProductsPage.tsx
     │   ├── services/
-    │   │   ├── auth.ts
-    │   │   ├── customer.ts
-    │   │   └── product.ts
     │   ├── types/
-    │   │   ├── auth.ts
-    │   │   ├── customer.ts
-    │   │   └── product.ts
     │   └── App.tsx
     ├── package.json
     └── vite.config.ts
 ```
-
-La estructura del frontend continuará evolucionando a medida que se incorporen nuevos dominios y el layout principal de la aplicación.
 
 ---
 
@@ -424,9 +296,7 @@ La estructura del frontend continuará evolucionando a medida que se incorporen 
 
 La configuración del backend se gestiona mediante `pydantic-settings`.
 
-Las variables de entorno se encuentran en un archivo `.env` situado en la raíz del proyecto.
-
-Ejemplo:
+Ejemplo de `.env`:
 
 ```env
 POSTGRES_DB=verifactu
@@ -440,45 +310,21 @@ JWT_ALGORITHM=HS256
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
 
-El archivo `.env` no debe incluirse en Git.
-
-El repositorio contiene `.env.example` como referencia para configurar un entorno local.
+El archivo `.env` no debe incluirse en Git. El repositorio contiene `.env.example` como referencia.
 
 ---
 
-# Base de datos
-
-El proyecto utiliza PostgreSQL.
-
-Durante el desarrollo se ejecuta mediante Docker Compose.
+# Base de datos y Alembic
 
 Configuración actual:
 
 ```text
-Database: verifactu
-User: verifactu
-Container: verifactu-postgres
-Host port: 55732
+Database:       verifactu
+User:           verifactu
+Container:      verifactu-postgres
+Host port:      55732
 Container port: 5432
 ```
-
-Para iniciar PostgreSQL:
-
-```powershell
-docker compose up -d
-```
-
-Para comprobar el estado:
-
-```powershell
-docker compose ps
-```
-
----
-
-# Alembic
-
-Alembic gestiona la evolución del esquema de base de datos.
 
 Migraciones actuales:
 
@@ -490,33 +336,22 @@ a23de07e7fb2_create_users_table.py
 666e0bbbf372_enforce_case_insensitive_user_email_.py
 40cc09359304_create_products_table.py
 42772bf4e57d_create_customers_table.py
+6a6fffec7d19_create_orders_and_order_lines.py
 ```
 
-La revisión actual es:
+Revisión actual:
 
 ```text
-42772bf4e57d (head)
+6a6fffec7d19 (head)
 ```
 
-Para aplicar las migraciones:
-
-```powershell
-alembic upgrade head
-```
-
-Para comprobar la revisión:
-
-```powershell
-alembic current
-```
-
-Para comprobar que los modelos SQLAlchemy y el esquema gestionado por Alembic están sincronizados:
+Comprobación de sincronización:
 
 ```powershell
 alembic check
 ```
 
-Estado comprobado:
+Resultado actual:
 
 ```text
 No new upgrade operations detected.
@@ -524,564 +359,149 @@ No new upgrade operations detected.
 
 ---
 
-# Dominio Business
+# Dominios principales
 
-Una empresa representa el tenant principal de la aplicación.
+## Business
 
-Campos actuales:
+Business representa el tenant principal de la aplicación.
 
-```text
-id
-legal_name
-tax_id
-trade_name
-address
-postal_code
-city
-province
-country_code
-is_active
-created_at
-updated_at
-```
-
-Una empresa puede tener múltiples usuarios, productos y clientes.
+Relaciones actuales:
 
 ```text
 Business
-   │
    ├── Users
    ├── Products
-   └── Customers
+   ├── Customers
+   └── Orders
 ```
 
-El ciclo de vida utiliza desactivación lógica.
+## User
 
-No se realiza borrado físico ordinario porque la futura información fiscal y de facturación debe conservar trazabilidad.
+Cada usuario pertenece exactamente a una empresa mediante `business_id`. Las contraseñas se almacenan mediante Argon2 y la API aplica autenticación y aislamiento por tenant.
 
-La activación y desactivación continúan implementadas en la capa de dominio, pero actualmente no se exponen mediante endpoints HTTP públicos.
+## Product
 
-Las actualizaciones HTTP de Business utilizan un contrato estricto. Los campos no declarados en `BusinessUpdate` se rechazan en lugar de ignorarse silenciosamente.
+Cada producto pertenece a un Business.
 
-Esto impide, entre otros casos, intentar modificar mediante el endpoint ordinario de actualización campos de ciclo de vida como:
+Los valores monetarios utilizan `Decimal` en Python y `NUMERIC` en PostgreSQL.
 
-```text
-is_active
-```
+El SKU es opcional y único dentro de cada Business cuando existe.
 
----
-
-# Dominio User
-
-Cada usuario pertenece exactamente a una empresa mediante:
-
-```text
-business_id
-```
-
-Campos actuales:
-
-```text
-id
-business_id
-email
-password_hash
-full_name
-is_active
-created_at
-updated_at
-```
-
-Las contraseñas nunca se almacenan en texto plano.
-
-El hashing se realiza mediante Argon2 utilizando `pwdlib`.
-
-En la capa de dominio los usuarios pueden:
-
-- crearse;
-- consultarse;
-- listarse por empresa;
-- actualizarse;
-- activarse;
-- desactivarse;
-- autenticarse.
-
-La API HTTP de User está protegida mediante autenticación y aislamiento por tenant.
-
-La creación ordinaria de usuarios no permite que el cliente seleccione el tenant mediante `business_id`. En su lugar, la empresa se deriva de:
-
-```python
-current_user.business_id
-```
-
-El schema HTTP de creación rechaza campos adicionales, por lo que un intento de proporcionar manualmente `business_id` no forma parte del contrato válido de la API.
-
-El contrato HTTP de actualización también rechaza campos adicionales. Por tanto, `business_id` no puede introducirse mediante `PATCH /users/{user_id}` para intentar trasladar un usuario a otro tenant.
-
-El listado de usuarios devuelve exclusivamente los usuarios pertenecientes al Business autenticado.
-
-Las consultas y actualizaciones de usuarios aplican comprobación same-business y ocultan mediante `404 Not Found` los usuarios pertenecientes a otros tenants.
-
-Las operaciones de activación y desactivación continúan disponibles en la capa de dominio, pero no se exponen actualmente mediante HTTP hasta disponer de una política administrativa o de roles adecuada.
-
----
-
-# Dominio Product
-
-Cada producto pertenece exactamente a una empresa mediante:
-
-```text
-business_id
-```
-
-Campos actuales:
-
-```text
-id
-business_id
-name
-sku
-description
-unit_price
-tax_rate
-is_active
-created_at
-updated_at
-```
-
-La relación es:
-
-```text
-Business
-   │
-   └── Products
-```
-
-## Precios e impuestos
-
-Los valores económicos utilizan tipos decimales exactos.
-
-En Python:
-
-```text
-Decimal
-```
-
-En PostgreSQL:
-
-```text
-unit_price NUMERIC(12, 2)
-tax_rate   NUMERIC(5, 2)
-```
-
-No se utilizan números de coma flotante para representar importes monetarios.
-
-`unit_price` representa actualmente el precio unitario antes de impuestos.
-
-`tax_rate` representa el porcentaje de impuesto asociado al producto dentro del modelo actual del MVP.
-
-## SKU
-
-El SKU es opcional.
-
-Cuando existe, su unicidad se aplica dentro del Business:
-
-```text
-(business_id, sku)
-```
-
-Por tanto:
-
-- dos productos del mismo Business no pueden compartir el mismo SKU;
-- dos Businesses distintos sí pueden utilizar el mismo SKU;
-- pueden existir múltiples productos sin SKU.
-
-La restricción está reforzada en PostgreSQL mediante un índice único compuesto:
-
-```text
-uq_products_business_id_sku
-```
-
-La comparación de SKU es actualmente exacta y sensible a mayúsculas/minúsculas.
-
-## Ciclo de vida
-
-Product utiliza desactivación lógica mediante:
-
-```text
-is_active
-```
-
-No existe un `DELETE /products/{product_id}` ordinario.
-
-El ciclo de vida se gestiona mediante endpoints específicos:
+Lifecycle HTTP:
 
 ```text
 PATCH /products/{product_id}/activate
 PATCH /products/{product_id}/deactivate
 ```
 
-Estas operaciones están protegidas mediante autenticación y aislamiento por tenant.
+## Customer
 
-El campo `is_active` no puede modificarse mediante el `PATCH /products/{product_id}` ordinario, evitando mezclar la edición de los datos del producto con las operaciones explícitas de ciclo de vida.
+Cada cliente pertenece a un Business.
 
-## Aislamiento por tenant
+`tax_id` es opcional en el modelo actual y, cuando existe, es único dentro del Business.
 
-La creación HTTP de Product no acepta `business_id`.
-
-El tenant se obtiene internamente mediante:
-
-```python
-current_user.business_id
-```
-
-El listado:
-
-```text
-GET /products
-```
-
-devuelve exclusivamente los productos del Business autenticado.
-
-Las operaciones sobre un producto concreto comprueban que:
-
-```text
-product.business_id == current_business_id
-```
-
-Los intentos de consultar, modificar, activar o desactivar productos de otro tenant devuelven:
-
-```text
-404 Not Found
-```
-
-para no revelar la existencia del recurso.
-
-El contrato `ProductUpdate` es estricto y no permite modificar mediante el `PATCH` ordinario:
-
-```text
-business_id
-is_active
-```
-
----
-
-# Dominio Customer
-
-Cada cliente pertenece exactamente a una empresa mediante:
-
-```text
-business_id
-```
-
-Campos actuales:
-
-```text
-id
-business_id
-tax_id
-legal_name
-trade_name
-address
-postal_code
-city
-province
-country_code
-email
-phone
-is_active
-created_at
-updated_at
-```
-
-La relación es:
-
-```text
-Business
-   │
-   └── Customers
-```
-
-## Identificación fiscal
-
-`tax_id` es opcional en el modelo actual del MVP.
-
-Esto permite crear clientes ligeros sin identificación fiscal cuando todavía no se dispone de todos sus datos.
-
-Cuando existe, su unicidad se aplica dentro del Business:
-
-```text
-(business_id, tax_id)
-```
-
-Por tanto:
-
-- dos clientes del mismo Business no pueden compartir el mismo `tax_id`;
-- dos Businesses distintos sí pueden utilizar el mismo `tax_id`;
-- pueden existir múltiples clientes sin `tax_id`.
-
-La restricción está reforzada en PostgreSQL mediante un índice único compuesto:
-
-```text
-uq_customers_business_id_tax_id
-```
-
-La comparación de `tax_id` es actualmente exacta.
-
-En esta fase no se implementa todavía una validación fiscal completa de NIF, NIE o CIF. Las validaciones fiscales necesarias se incorporarán cuando el dominio de facturación determine los requisitos concretos del receptor de cada tipo de factura.
-
-## Datos del cliente
-
-`legal_name` es obligatorio.
-
-El resto de información comercial y de contacto puede completarse progresivamente:
-
-```text
-trade_name
-address
-postal_code
-city
-province
-email
-phone
-```
-
-`country_code` utiliza actualmente:
-
-```text
-ES
-```
-
-como valor por defecto y exige técnicamente una longitud de dos caracteres.
-
-La disponibilidad de un Customer en el sistema no implica por sí sola que sus datos sean suficientes para cualquier tipo de factura. Las reglas correspondientes se validarán en el futuro dominio Invoice.
-
-## Ciclo de vida
-
-Customer utiliza desactivación lógica mediante:
-
-```text
-is_active
-```
-
-No existe un `DELETE /customers/{customer_id}` ordinario.
-
-El ciclo de vida se gestiona mediante endpoints específicos:
+Lifecycle HTTP:
 
 ```text
 PATCH /customers/{customer_id}/activate
 PATCH /customers/{customer_id}/deactivate
 ```
 
-El campo `is_active` no puede modificarse mediante el `PATCH /customers/{customer_id}` ordinario.
+## Order
 
-## Aislamiento por tenant
+Order representa el pedido comercial previo a la entrega y a la facturación.
 
-La creación HTTP de Customer no acepta `business_id`.
+Cada pedido pertenece a un Business y a un Customer y contiene una o más líneas.
 
-El tenant se obtiene internamente mediante:
-
-```python
-current_user.business_id
-```
-
-El listado:
+### Campos principales de Order
 
 ```text
-GET /customers
-```
-
-devuelve exclusivamente los clientes del Business autenticado.
-
-Las operaciones sobre un cliente concreto aplican comprobación same-business.
-
-Los intentos de consultar, modificar, activar o desactivar clientes pertenecientes a otro tenant devuelven:
-
-```text
-404 Not Found
-```
-
-para no revelar la existencia del recurso.
-
-El contrato `CustomerUpdate` es estricto y no permite introducir campos no declarados como:
-
-```text
+id
 business_id
-is_active
+customer_id
+status
+notes
+subtotal
+tax_total
+total_amount
+created_at
+updated_at
+confirmed_at
 ```
 
-La implementación actual dispone de Repository, Service y API protegida, junto con tests específicos de persistencia, reglas de negocio, autenticación, lifecycle y aislamiento multi-tenant.
+### Campos principales de OrderLine
+
+```text
+id
+order_id
+product_id
+description
+quantity
+unit_price
+tax_rate
+base_amount
+tax_amount
+total_amount
+position
+created_at
+```
+
+### Snapshot comercial
+
+Las líneas conservan una copia de `description`, `unit_price` y `tax_rate` del Product utilizado en el momento de creación o sustitución de la línea.
+
+De esta forma, una modificación posterior del producto no altera los datos comerciales ya persistidos en el pedido.
+
+### Cantidades e importes
+
+```text
+quantity     NUMERIC(12, 3)
+subtotal     NUMERIC(14, 2)
+tax_total    NUMERIC(14, 2)
+total_amount NUMERIC(14, 2)
+```
+
+El backend calcula bases, impuestos y totales. El cliente HTTP no puede suministrar directamente esos importes.
+
+La capa Service utiliza `ROUND_HALF_UP` para el redondeo monetario del pedido.
+
+> Las reglas fiscales definitivas de cálculo y redondeo de Invoice se validarán específicamente al implementar el dominio de facturación.
+
+### Lifecycle de Order
+
+Estados actuales:
+
+```text
+DRAFT
+CONFIRMED
+CANCELLED
+```
+
+Flujo:
+
+```text
+DRAFT
+ ├── editar
+ ├── confirmar → CONFIRMED
+ └── cancelar  → CANCELLED
+
+CONFIRMED
+ └── cancelar  → CANCELLED
+```
+
+Un pedido confirmado no puede editarse mediante la operación ordinaria. Un pedido cancelado se conserva para mantener trazabilidad.
+
+### Tenant y validaciones
+
+La creación HTTP de Order no acepta `business_id`.
+
+El backend valida que Customer y Product pertenecen al mismo Business del usuario autenticado y que están activos. Los accesos cross-tenant se ocultan mediante `404 Not Found`.
 
 ---
 
-# Normalización e identidad del email
+# Autenticación y autorización
 
-El email funciona como identificador global de usuario para el MVP.
-
-Antes de persistirlo o utilizarlo en operaciones de identidad se normaliza mediante:
-
-```python
-email.strip().lower()
-```
-
-La normalización se aplica actualmente en:
-
-- creación de usuario;
-- actualización del email;
-- búsqueda mediante `UserService.get_by_email()`;
-- autenticación.
-
-Por tanto, operaciones como:
-
-```text
-user@example.com
-USER@EXAMPLE.COM
-User@Example.Com
-```
-
-se consideran equivalentes dentro de la aplicación.
-
-La base de datos refuerza esta regla mediante un índice funcional único de PostgreSQL:
-
-```sql
-lower(email)
-```
-
-La estructura lógica es:
-
-```text
-ix_users_email
-    índice normal
-    unique = false
-
-uq_users_email_lower
-    índice funcional
-    lower(email)
-    unique = true
-```
-
-El modelo SQLAlchemy declara explícitamente este índice funcional, manteniendo sincronizados:
-
-```text
-SQLAlchemy
-Alembic
-PostgreSQL
-```
-
-`alembic check` confirma que no existen operaciones de actualización pendientes en el checkpoint actual.
-
----
-
-# Autenticación
-
-La autenticación utiliza JWT.
-
-Configuración actual:
-
-```text
-Algorithm: HS256
-Access token expiration: 30 minutes
-```
-
-Los tokens incluyen:
-
-```text
-sub
-iat
-exp
-```
-
-`sub` contiene el identificador del usuario como string.
-
-El endpoint de login recibe JSON.
-
-Por esta razón se utiliza `HTTPBearer` para resolver las credenciales de las peticiones autenticadas, en lugar de anunciar un flujo OAuth2 Password basado en formulario.
-
-## Registro y bootstrap inicial
-
-El alta inicial de un tenant se realiza mediante:
-
-```text
-POST /auth/register
-```
-
-El endpoint recibe conjuntamente los datos de:
-
-```text
-Business
-+
-primer User
-```
-
-El cliente no proporciona `business_id`. La relación se establece internamente después de crear la empresa.
-
-La operación se ejecuta como una única unidad transaccional:
-
-```text
-crear Business
-      ↓
-crear primer User
-      ↓
-generar access token
-      ↓
-commit
-```
-
-Los servicios de Business y User permiten omitir su `commit()` cuando participan en esta operación coordinada, manteniendo el límite final de la transacción en `AuthService`.
-
-Si cualquier paso falla, se realiza:
-
-```text
-rollback
-```
-
-evitando dejar una empresa creada sin su usuario inicial.
-
-El registro devuelve un JWT utilizable inmediatamente por el nuevo usuario.
-
-Los conflictos conocidos de identidad devuelven:
-
-```text
-409 Conflict
-```
-
-tanto para un `tax_id` de empresa ya existente como para un email de usuario ya registrado.
-
----
-
-# Resolución del usuario autenticado
-
-La dependencia `get_current_user`:
-
-1. obtiene el Bearer Token;
-2. valida el JWT;
-3. obtiene `sub`;
-4. convierte `sub` al ID del usuario;
-5. consulta el usuario en PostgreSQL;
-6. comprueba que el usuario existe;
-7. comprueba que está activo;
-8. comprueba que su empresa existe;
-9. comprueba que la empresa está activa.
-
-Esto significa que un JWT válido no garantiza por sí solo acceso permanente.
-
-Si el usuario o su empresa son desactivados, las siguientes peticiones autenticadas dejan de ser válidas aunque el token todavía no haya expirado.
-
----
-
-# Autorización y aislamiento por tenant
-
-La autenticación responde a:
-
-```text
-¿Quién es el usuario?
-```
-
-La autorización responde a:
-
-```text
-¿Puede este usuario acceder a este recurso?
-```
+La autenticación utiliza JWT con Bearer Token.
 
 El tenant autenticado se deriva de:
 
@@ -1089,27 +509,14 @@ El tenant autenticado se deriva de:
 current_user.business_id
 ```
 
-La aplicación incorpora una dependencia específica para obtener el identificador de la empresa autenticada:
+La aplicación utiliza:
 
 ```text
 get_current_business_id
-```
-
-También existe una comprobación central:
-
-```text
 ensure_same_business
 ```
 
-Su objetivo es impedir que un usuario acceda a recursos pertenecientes a otra empresa.
-
-Cuando se intenta acceder a un recurso de otro tenant se utiliza:
-
-```text
-404 Not Found
-```
-
-en lugar de revelar mediante un `403 Forbidden` que dicho recurso existe.
+Cuando se intenta acceder a un recurso de otro tenant se devuelve `404 Not Found` para no revelar que el recurso existe.
 
 Este modelo se aplica actualmente a:
 
@@ -1118,90 +525,8 @@ Business
 User
 Product
 Customer
+Order
 ```
-
-### Business
-
-```text
-GET   /businesses
-GET   /businesses/{business_id}
-PATCH /businesses/{business_id}
-```
-
-Un usuario autenticado:
-
-- solo puede listar su propia empresa;
-- puede consultar únicamente su propia empresa;
-- puede actualizar únicamente su propia empresa;
-- recibe `404 Not Found` al intentar acceder o modificar una empresa perteneciente a otro tenant;
-- no puede modificar `is_active` mediante el `PATCH` ordinario de Business.
-
-La creación inicial de Business se realiza exclusivamente mediante `POST /auth/register`.
-
-### User
-
-```text
-POST  /users
-GET   /users
-GET   /users/{user_id}
-PATCH /users/{user_id}
-```
-
-Un usuario autenticado:
-
-- puede crear nuevos usuarios únicamente dentro de su propio tenant;
-- no puede seleccionar arbitrariamente otro `business_id`;
-- solo puede listar usuarios pertenecientes a su propia empresa;
-- puede consultar únicamente usuarios de su propia empresa;
-- puede actualizar únicamente usuarios de su propia empresa;
-- no puede modificar `business_id` mediante el `PATCH` ordinario;
-- recibe `404 Not Found` al intentar consultar o modificar usuarios de otro tenant.
-
-### Product
-
-```text
-POST  /products
-GET   /products
-GET   /products/{product_id}
-PATCH /products/{product_id}
-PATCH /products/{product_id}/activate
-PATCH /products/{product_id}/deactivate
-```
-
-Un usuario autenticado:
-
-- puede crear productos únicamente dentro de su propio tenant;
-- no puede proporcionar arbitrariamente otro `business_id`;
-- solo puede listar productos de su propia empresa;
-- puede consultar únicamente productos de su propia empresa;
-- puede actualizar únicamente productos de su propia empresa;
-- puede activar o desactivar únicamente productos de su propia empresa;
-- no puede modificar `business_id` mediante el `PATCH` ordinario;
-- no puede modificar `is_active` mediante el `PATCH` ordinario;
-- recibe `404 Not Found` al intentar operar sobre productos de otro tenant.
-
-### Customer
-
-```text
-POST  /customers
-GET   /customers
-GET   /customers/{customer_id}
-PATCH /customers/{customer_id}
-PATCH /customers/{customer_id}/activate
-PATCH /customers/{customer_id}/deactivate
-```
-
-Un usuario autenticado:
-
-- puede crear clientes únicamente dentro de su propio tenant;
-- no puede proporcionar arbitrariamente otro `business_id`;
-- solo puede listar clientes pertenecientes a su propia empresa;
-- puede consultar únicamente clientes de su propia empresa;
-- puede actualizar únicamente clientes de su propia empresa;
-- puede activar o desactivar únicamente clientes de su propia empresa;
-- no puede modificar `business_id` mediante el `PATCH` ordinario;
-- no puede modificar `is_active` mediante el `PATCH` ordinario;
-- recibe `404 Not Found` al intentar operar sobre clientes de otro tenant.
 
 ---
 
@@ -1230,16 +555,6 @@ GET   /businesses/{business_id}
 PATCH /businesses/{business_id}
 ```
 
-Todos los endpoints públicos de Business requieren autenticación.
-
-`GET /businesses` devuelve únicamente la empresa asociada al tenant autenticado.
-
-`GET /businesses/{business_id}` y `PATCH /businesses/{business_id}` aplican comprobación same-business.
-
-Los intentos de acceso cross-tenant devuelven `404 Not Found`.
-
-Los antiguos endpoints públicos de creación y cambio de estado no forman parte actualmente del contrato HTTP.
-
 ## Users
 
 ```text
@@ -1249,16 +564,6 @@ GET   /users/{user_id}
 PATCH /users/{user_id}
 ```
 
-Todos los endpoints públicos de User requieren autenticación.
-
-`POST /users` deriva el tenant del usuario autenticado.
-
-`GET /users` devuelve exclusivamente los usuarios del Business autenticado.
-
-Las operaciones sobre un usuario concreto aplican aislamiento same-business.
-
-Los endpoints de activación y desactivación no forman parte actualmente del contrato HTTP público.
-
 ## Products
 
 ```text
@@ -1266,44 +571,6 @@ POST  /products
 GET   /products
 GET   /products/{product_id}
 PATCH /products/{product_id}
-PATCH /products/{product_id}/activate
-PATCH /products/{product_id}/deactivate
-```
-
-Todos los endpoints de Product requieren autenticación.
-
-`POST /products` deriva `business_id` del tenant autenticado y no permite que el cliente seleccione otra empresa.
-
-`GET /products` devuelve exclusivamente los productos del Business autenticado.
-
-Las operaciones sobre productos concretos aplican aislamiento same-business.
-
-Los intentos de acceso cross-tenant devuelven:
-
-```text
-404 Not Found
-```
-
-Los SKU duplicados dentro del mismo Business producen:
-
-```text
-409 Conflict
-```
-
-El mismo SKU puede existir en Businesses diferentes.
-
-Los campos:
-
-```text
-business_id
-is_active
-```
-
-no forman parte del contrato ordinario de actualización de Product y son rechazados si se intentan proporcionar mediante `PATCH /products/{product_id}`.
-
-El ciclo de vida se gestiona explícitamente mediante:
-
-```text
 PATCH /products/{product_id}/activate
 PATCH /products/{product_id}/deactivate
 ```
@@ -1319,243 +586,53 @@ PATCH /customers/{customer_id}/activate
 PATCH /customers/{customer_id}/deactivate
 ```
 
-Todos los endpoints de Customer requieren autenticación.
-
-`POST /customers` deriva `business_id` del tenant autenticado y no permite que el cliente seleccione otra empresa.
-
-`GET /customers` devuelve exclusivamente los clientes del Business autenticado.
-
-Las operaciones sobre clientes concretos aplican aislamiento same-business.
-
-Los intentos de acceso cross-tenant devuelven:
+## Orders
 
 ```text
-404 Not Found
+POST  /orders
+GET   /orders
+GET   /orders/{order_id}
+PATCH /orders/{order_id}
+PATCH /orders/{order_id}/confirm
+PATCH /orders/{order_id}/cancel
 ```
 
-Los `tax_id` duplicados dentro del mismo Business producen:
-
-```text
-409 Conflict
-```
-
-El mismo `tax_id` puede existir en Businesses diferentes.
-
-También pueden existir múltiples clientes sin `tax_id`.
-
-Los campos:
-
-```text
-business_id
-is_active
-```
-
-no forman parte del contrato ordinario de actualización de Customer y son rechazados si se intentan proporcionar mediante `PATCH /customers/{customer_id}`.
-
-El ciclo de vida se gestiona explícitamente mediante:
-
-```text
-PATCH /customers/{customer_id}/activate
-PATCH /customers/{customer_id}/deactivate
-```
+Todos los endpoints de Order requieren autenticación y aislamiento por tenant.
 
 ---
 
 # Frontend
 
-El frontend está desarrollado con:
+El frontend está desarrollado con React, TypeScript, Vite y Tailwind CSS.
 
-```text
-React
-TypeScript
-Vite
-Tailwind CSS
-```
+Actualmente están integrados:
 
-El objetivo del frontend en esta fase ha sido consumir funcionalidad real del backend antes de ampliar la interfaz hacia facturación y VERI\*FACTU.
+- Login;
+- listado, creación, edición y lifecycle de Products;
+- listado, creación, edición y lifecycle de Customers.
 
-## Autenticación
+El backend de Orders ya está implementado. La integración frontend de Order es el siguiente paso inmediato y deberá permitir:
 
-El usuario puede autenticarse contra:
+- listar pedidos;
+- crear un borrador;
+- seleccionar cliente;
+- añadir productos y cantidades;
+- editar pedidos `DRAFT`;
+- mostrar base, impuestos y total calculados por backend;
+- confirmar pedidos;
+- cancelar pedidos;
+- consultar su estado.
 
-```text
-POST /auth/login
-```
-
-El access token obtenido se utiliza posteriormente mediante:
-
-```http
-Authorization: Bearer <token>
-```
-
-para acceder a los endpoints protegidos.
-
-## Productos
-
-La interfaz de productos permite actualmente:
-
-- cargar los productos del tenant autenticado;
-- mostrar estados de carga;
-- mostrar errores de comunicación con la API;
-- mostrar el estado vacío del catálogo;
-- crear productos;
-- editar productos existentes;
-- mostrar SKU;
-- mostrar precio unitario;
-- mostrar IVA;
-- mostrar estado activo/inactivo;
-- activar productos;
-- desactivar productos.
-
-La creación y edición utilizan un formulario reutilizable:
-
-```text
-ProductForm
-```
-
-que decide entre:
-
-```text
-POST /products
-```
-
-y:
-
-```text
-PATCH /products/{product_id}
-```
-
-dependiendo de si existe un producto en edición.
-
-El frontend no modifica directamente `business_id` ni `is_active`.
-
-El tenant se resuelve siempre en backend a partir del usuario autenticado y el ciclo de vida utiliza los endpoints específicos de activación/desactivación.
-
-## Clientes
-
-La interfaz de clientes permite actualmente:
-
-- cargar los clientes del tenant autenticado;
-- mostrar estados de carga;
-- mostrar errores de comunicación con la API;
-- mostrar el estado vacío;
-- crear clientes;
-- editar clientes existentes;
-- mostrar razón social y nombre comercial;
-- mostrar `tax_id`;
-- mostrar localidad y provincia;
-- mostrar email y teléfono;
-- mostrar estado activo/inactivo;
-- activar clientes;
-- desactivar clientes;
-- consumir los endpoints protegidos mediante JWT.
-
-La creación y edición utilizan un formulario reutilizable:
-
-```text
-CustomerForm
-```
-
-que decide entre:
-
-```text
-POST /customers
-```
-
-y:
-
-```text
-PATCH /customers/{customer_id}
-```
-
-dependiendo de si existe un cliente en edición.
-
-El frontend no modifica directamente `business_id` ni `is_active`.
-
-El tenant se resuelve siempre en backend a partir del usuario autenticado y el ciclo de vida utiliza los endpoints específicos de activación/desactivación.
-
-La integración se ha validado manualmente de extremo a extremo mediante:
-
-```text
-listar
-  ↓
-crear
-  ↓
-editar
-  ↓
-desactivar
-  ↓
-activar
-```
-
-## Calidad frontend
-
-El frontend ha superado:
+El último checkpoint frontend ha superado:
 
 ```powershell
 npm run build
-```
-
-y:
-
-```powershell
 npm run lint
 ```
-
-sin errores en el checkpoint actual.
-
----
-
-# Seguridad
-
-Actualmente están implementadas las siguientes medidas:
-
-- contraseñas almacenadas mediante hash;
-- Argon2;
-- JWT firmados;
-- expiración de access tokens;
-- validación de firma;
-- rechazo de tokens expirados;
-- rechazo de tokens manipulados;
-- comprobación del usuario contra la base de datos en cada petición autenticada;
-- rechazo de usuarios inactivos;
-- rechazo de usuarios pertenecientes a empresas inactivas;
-- errores HTTP genéricos durante autenticación;
-- mitigación de diferencias temporales para usuarios inexistentes mediante verificación Argon2 ficticia;
-- normalización consistente del email;
-- unicidad case-insensitive del email en PostgreSQL;
-- aislamiento por tenant basado en `current_user.business_id`;
-- protección de los endpoints públicos de Business;
-- protección de los endpoints públicos de User;
-- protección de los endpoints públicos de Product;
-- protección de los endpoints públicos de Customer;
-- ocultación de recursos cross-tenant mediante `404 Not Found`;
-- listados de Business, User, Product y Customer limitados al tenant autenticado;
-- creación ordinaria de User, Product y Customer ligada al tenant autenticado;
-- rechazo de `business_id` arbitrario en los contratos HTTP correspondientes;
-- rechazo de campos no declarados en contratos de actualización;
-- protección frente a modificaciones ordinarias de atributos sensibles;
-- operaciones explícitas de ciclo de vida de Product;
-- protección multi-tenant de activación/desactivación de Product;
-- operaciones explícitas de ciclo de vida de Customer;
-- protección multi-tenant de activación/desactivación de Customer;
-- registro/bootstrap transaccional;
-- rollback completo si falla la creación del Business o del primer User.
-
-Siguen existiendo mejoras de seguridad previstas para fases posteriores, entre ellas:
-
-- aplicar el mismo patrón de aislamiento a cada nuevo dominio asociado a tenant;
-- definir una política de roles/administración para operaciones sensibles;
-- revisar los límites transaccionales y errores concurrentes a medida que aparezcan operaciones compuestas;
-- definir una estrategia de revocación avanzada de sesiones/tokens si fuese necesaria.
 
 ---
 
 # Tests
-
-Los tests utilizan `pytest`.
-
-La fixture de base de datos abre una transacción por test y realiza rollback al finalizar, manteniendo aislados los casos de prueba.
 
 Para ejecutar toda la suite:
 
@@ -1566,10 +643,54 @@ pytest -q
 Estado actual:
 
 ```text
-201 passed, 1 warning
+260 passed, 1 warning
 ```
 
-El warning conocido es:
+Desglose de los principales vertical slices:
+
+```text
+Product
+22 API
+ 7 Repository
+16 Service
+---------
+45 total
+
+Customer
+23 API
+ 8 Repository
+17 Service
+---------
+48 total
+
+Order
+27 API
+ 6 Repository
+26 Service
+---------
+59 total
+```
+
+La suite de Order cubre, entre otros:
+
+- creación de pedidos;
+- snapshots de producto;
+- cálculo de importes;
+- redondeo monetario;
+- Customer inexistente, inactivo o cross-tenant;
+- Product inexistente, inactivo o cross-tenant;
+- posiciones duplicadas;
+- aislamiento por tenant;
+- edición de pedidos `DRAFT`;
+- sustitución de líneas;
+- recálculo de totales;
+- confirmación;
+- cancelación;
+- bloqueo de operaciones incompatibles con el estado;
+- autenticación de endpoints;
+- respuestas HTTP de error.
+
+Warning conocido:
 
 ```text
 StarletteDeprecationWarning:
@@ -1577,133 +698,15 @@ Using `httpx` with `starlette.testclient` is deprecated;
 install `httpx2` instead.
 ```
 
-No bloquea actualmente el desarrollo y se resolverá de forma separada.
-
-La suite cubre actualmente, entre otros:
-
-- health endpoints;
-- repository, service y API de Business;
-- ciclo de vida Business en dominio;
-- aislamiento multi-tenant de Business;
-- contratos HTTP estrictos de Business;
-- repository, service y API de User;
-- ciclo de vida User en dominio;
-- aislamiento multi-tenant de User;
-- contratos HTTP estrictos de User;
-- hashing de contraseñas;
-- generación y decodificación de JWT;
-- tokens manipulados y expirados;
-- login;
-- credenciales incorrectas;
-- usuarios y empresas inactivas;
-- `/auth/me`;
-- resolución del usuario autenticado;
-- normalización de email;
-- autenticación y búsquedas case-insensitive;
-- unicidad case-insensitive del email;
-- resolución del tenant autenticado;
-- autorización same-business;
-- registro/bootstrap de Business + primer User;
-- emisión de JWT durante el registro;
-- rollback transaccional;
-- comportamiento de servicios sin `commit()` cuando participan en transacciones coordinadas;
-- repository de Product;
-- service de Product;
-- API de Product;
-- creación de Product dentro del tenant autenticado;
-- rechazo de `business_id` arbitrario;
-- aislamiento del listado de Product por tenant;
-- consulta de Product del tenant propio;
-- rechazo de consultas cross-tenant;
-- actualización de Product del tenant propio;
-- rechazo de actualizaciones cross-tenant;
-- rechazo de `business_id` e `is_active` en `PATCH`;
-- SKU duplicado dentro del mismo Business;
-- mismo SKU permitido en Businesses diferentes;
-- eliminación opcional del SKU mediante `null`;
-- activación y desactivación de Product;
-- protección de activación/desactivación mediante autenticación;
-- aislamiento cross-tenant de las operaciones de ciclo de vida de Product;
-- respuesta `404` para productos inexistentes o pertenecientes a otro tenant;
-- comportamiento transaccional de Product sin `commit()`;
-- repository de Customer;
-- service de Customer;
-- API de Customer;
-- creación de Customer dentro del tenant autenticado;
-- rechazo de `business_id` arbitrario en Customer;
-- aislamiento del listado de Customer por tenant;
-- consulta de Customer del tenant propio;
-- rechazo de consultas cross-tenant de Customer;
-- actualización de Customer del tenant propio;
-- rechazo de actualizaciones cross-tenant de Customer;
-- rechazo de `business_id` e `is_active` en `PATCH` de Customer;
-- `tax_id` duplicado dentro del mismo Business;
-- mismo `tax_id` permitido en Businesses diferentes;
-- múltiples clientes sin `tax_id`;
-- eliminación opcional del `tax_id` mediante `null`;
-- activación y desactivación de Customer;
-- protección de activación/desactivación de Customer mediante autenticación;
-- aislamiento cross-tenant de las operaciones de ciclo de vida de Customer;
-- respuesta `404` para clientes inexistentes o pertenecientes a otro tenant;
-- comportamiento transaccional de Customer sin `commit()`.
-
-La fase Product incorpora actualmente:
-
-```text
-22 tests API
- 7 tests Repository
-16 tests Service
--------------------
-45 tests Product
-```
-
-La fase Customer incorpora actualmente:
-
-```text
-23 tests API
- 8 tests Repository
-17 tests Service
--------------------
-48 tests Customer
-```
-
 ---
 
 # Ruff
 
-Ruff se utiliza para análisis estático y mantenimiento de calidad del código.
+Ruff se utiliza para análisis estático y mantenimiento de calidad.
 
-Puede ejecutarse mediante:
+No se ejecuta un `ruff check . --fix` indiscriminado sobre el proyecto para evitar mezclar deuda de estilo histórica con cambios funcionales.
 
-```powershell
-ruff check .
-```
-
-Actualmente existe deuda de lint heredada en algunos archivos históricos y migraciones generadas por Alembic.
-
-Además, la regla `B008` detecta el patrón:
-
-```python
-Depends(...)
-```
-
-utilizado de forma habitual por FastAPI en parámetros de dependencias.
-
-Esta configuración se revisará en una tarea de tooling independiente para evitar mezclar cambios de estilo globales con cambios funcionales.
-
-No se utiliza actualmente un:
-
-```powershell
-ruff check . --fix
-```
-
-indiscriminado sobre todo el proyecto.
-
-Los archivos de dominio y tests incorporados para Customer han superado la comprobación dirigida de Ruff.
-
-La migración de Customer también ha sido normalizada mediante Ruff de forma aislada.
-
-La deuda de lint restante se tratará como una tarea independiente para evitar introducir cambios masivos de estilo en commits funcionales.
+Los archivos nuevos de Order, su migración y sus tests han sido comprobados de forma dirigida.
 
 ---
 
@@ -1711,57 +714,23 @@ La deuda de lint restante se tratará como una tarea independiente para evitar i
 
 ## Base de datos
 
-Desde la raíz del proyecto:
-
 ```powershell
 docker compose up -d
-```
-
-Para comprobar PostgreSQL:
-
-```powershell
 docker compose ps
 ```
 
 ## Backend
 
-Entrar en:
-
 ```powershell
 cd backend
-```
-
-Activar el entorno virtual:
-
-```powershell
 .\.venv\Scripts\Activate.ps1
-```
-
-Aplicar migraciones:
-
-```powershell
 alembic upgrade head
-```
-
-Comprobar sincronización:
-
-```powershell
 alembic check
-```
-
-Ejecutar tests:
-
-```powershell
 pytest -q
-```
-
-Arrancar FastAPI:
-
-```powershell
 uvicorn app.main:app --reload
 ```
 
-La API estará disponible durante el desarrollo en:
+API local:
 
 ```text
 http://127.0.0.1:8000
@@ -1769,263 +738,117 @@ http://127.0.0.1:8000
 
 ## Frontend
 
-Desde otra terminal:
-
 ```powershell
 cd frontend
-```
-
-Instalar dependencias si fuese necesario:
-
-```powershell
 npm install
-```
-
-Arrancar Vite:
-
-```powershell
 npm run dev
 ```
 
-Comprobar build:
+Comprobaciones:
 
 ```powershell
 npm run build
-```
-
-Comprobar lint:
-
-```powershell
 npm run lint
 ```
 
 ---
 
-# Principios de diseño para VERI\*FACTU
+# Principios de diseño para el ciclo comercial y VERI\*FACTU
 
-La futura implementación de registros de facturación seguirá varios principios importantes.
+## Separación del ciclo comercial
+
+```text
+Order
+  ↓
+Delivery Note
+  ↓
+Invoice
+  ↓
+Payment
+```
+
+Entrega, facturación y pago representan conceptos distintos. El estado de pago no se utilizará como condición para emitir una factura.
+
+Los documentos posteriores deberán conservar snapshots suficientes para no reconstruir información histórica a partir de datos mutables.
 
 ## Inmutabilidad
 
-Los registros fiscales emitidos no deberán modificarse como registros ordinarios.
+Los futuros registros fiscales emitidos no deberán modificarse como registros ordinarios. Las correcciones deberán representarse conforme al mecanismo previsto por la especificación aplicable.
 
-Las correcciones deberán representarse mediante nuevos registros relacionados con los anteriores.
+## Hash y encadenamiento
 
-## Tipos de registro previstos
-
-```text
-ALTA
-ANULACION
-SUBSANACION
-```
-
-## Encadenamiento
-
-Los registros deberán mantener relación con el registro anterior.
-
-La arquitectura prevista contempla:
-
-```text
-previous_record_id
-```
-
-para representar la cadena.
-
-## Correcciones
-
-Las relaciones de corrección podrán utilizar:
-
-```text
-corrects_record_id
-```
-
-sin sobrescribir el registro original.
-
-## Hash
-
-El hash se calculará exactamente sobre los campos y con el procedimiento definidos por la especificación técnica aplicable.
-
-No se asumirá que el hash corresponde simplemente al XML completo.
+El hash, los campos participantes y el procedimiento de encadenamiento se implementarán exactamente según la especificación técnica aplicable. No se asumirá que el hash corresponde simplemente al XML completo.
 
 ## Envíos
 
-Los registros de facturación y los intentos de envío se modelarán por separado.
-
-Está prevista una entidad similar a:
-
-```text
-VerifactuSubmission
-```
-
-para conservar:
-
-- fecha del intento;
-- estado;
-- respuesta;
-- errores;
-- reintentos.
+Los registros de facturación y los intentos de envío se modelarán por separado para conservar estado, respuesta, errores y reintentos.
 
 ## Concurrencia
 
-La numeración de facturas y el encadenamiento deberán ser seguros frente a concurrencia.
-
-Se utilizarán transacciones PostgreSQL y, cuando sea necesario, mecanismos de bloqueo para impedir:
-
-- números duplicados;
-- saltos provocados por carreras;
-- cadenas inconsistentes.
+La numeración de facturas y cualquier encadenamiento fiscal deberán ser seguros frente a concurrencia mediante transacciones PostgreSQL y los mecanismos de bloqueo que resulten necesarios.
 
 ## Importes
 
-Los importes monetarios utilizarán tipos decimales exactos:
-
-```text
-Decimal
-NUMERIC
-```
-
-y no números de coma flotante.
+Los importes monetarios utilizarán `Decimal` / `NUMERIC`, no tipos de coma flotante.
 
 ---
 
 # Roadmap
 
-## Fase 1 — Infraestructura
+## Fases 1–7 — Base del MVP
 
-- [x] FastAPI
-- [x] configuración mediante `.env`
-- [x] PostgreSQL
-- [x] Docker Compose
-- [x] SQLAlchemy
-- [x] Alembic
-- [x] Pytest
-- [x] Ruff
+- [x] Infraestructura
+- [x] Business
+- [x] User y autenticación
+- [x] Autorización y tenants
+- [x] Products backend
+- [x] Products frontend
+- [x] Customers backend
+- [x] Customers frontend
 
-## Fase 2 — Business
+## Fase 8A — Orders
 
-- [x] modelo Business
+- [x] modelo Order
+- [x] modelo OrderLine
+- [x] relaciones con Business, Customer y Product
+- [x] migración Alembic
 - [x] schemas
 - [x] repository
 - [x] service
-- [x] API
-- [x] tests
-- [x] activación/desactivación lógica
-
-## Fase 3 — User y autenticación
-
-- [x] modelo User
-- [x] relación Business → Users
-- [x] schemas
-- [x] repository
-- [x] service
-- [x] API
-- [x] hashing Argon2
-- [x] autenticación
-- [x] JWT
-- [x] login
-- [x] Bearer authentication
-- [x] `get_current_user`
-- [x] `/auth/me`
-- [x] revocación funcional mediante estado de User/Business
-- [x] normalización de email
-- [x] búsqueda y login case-insensitive
-- [x] unicidad case-insensitive en PostgreSQL
-- [x] índice funcional `lower(email)`
-- [x] sincronización SQLAlchemy/Alembic/PostgreSQL
-- [x] mitigación temporal en login
-- [x] registro/bootstrap inicial
-- [x] creación atómica de Business + primer User
-- [x] JWT tras registro
-- [x] rollback transaccional ante fallos de registro
-
-## Fase 4 — Autorización y tenants
-
-- [x] identidad del tenant mediante `current_user.business_id`
-- [x] dependencia `get_current_business_id`
-- [x] comprobación reutilizable same-business
-- [x] protección de Business
-- [x] aislamiento cross-tenant de Business
-- [x] protección de User
-- [x] aislamiento cross-tenant de User
-- [x] creación de User ligada al tenant autenticado
-- [x] contratos HTTP estrictos
-- [x] ocultación de recursos cross-tenant mediante `404`
-- [x] tests de aislamiento y autenticación
-- [x] cierre de la fase inicial de autenticación/autorización
-
-## Fase 5 — Products
-
-- [x] modelo Product
-- [x] relación Business → Products
-- [x] precios mediante `Decimal` / `NUMERIC`
-- [x] porcentaje de impuesto mediante `Decimal` / `NUMERIC`
-- [x] SKU opcional
-- [x] unicidad de SKU por Business
-- [x] repository
-- [x] service
+- [x] snapshot de Product
+- [x] cálculo de importes
+- [x] lifecycle `DRAFT / CONFIRMED / CANCELLED`
+- [x] edición exclusiva de `DRAFT`
 - [x] API
 - [x] autenticación
 - [x] aislamiento multi-tenant
-- [x] contratos HTTP estrictos
-- [x] activación/desactivación lógica
-- [x] endpoints de activación/desactivación
-- [x] aislamiento multi-tenant del ciclo de vida
-- [x] migración Alembic
 - [x] tests Repository
 - [x] tests Service
 - [x] tests API
-- [x] tests cross-tenant
-- [x] vertical slice backend completado
+- [x] suite completa
+- [ ] integración frontend
 
-## Fase 6 — Frontend inicial
+## Fase 8B — Delivery Notes / Albaranes
 
-- [x] React
-- [x] TypeScript
-- [x] Vite
-- [x] Tailwind CSS
-- [x] estructura base
-- [x] cliente HTTP inicial
-- [x] autenticación
-- [x] persistencia y envío del Bearer Token
-- [x] listado de productos
-- [x] creación de productos
-- [x] edición de productos
-- [x] activación/desactivación de productos
-- [x] estados básicos de carga y error
-- [x] integración con FastAPI
-- [x] persistencia real en PostgreSQL
-- [x] build de producción
-- [x] ESLint
-- [ ] routing completo de la aplicación
-- [ ] layout/dashboard principal
+- [ ] modelo DeliveryNote
+- [ ] líneas de entrega
+- [ ] relación con Order
+- [ ] entregas parciales
+- [ ] cantidades entregadas
+- [ ] lifecycle
+- [ ] API
+- [ ] multi-tenant
+- [ ] tests
+- [ ] frontend
 
-## Fase 7 — Customers
-
-- [x] modelo Customer
-- [x] migración Alembic
-- [x] relación Business → Customers
-- [x] schemas
-- [x] repository
-- [x] service
-- [x] API
-- [x] autenticación
-- [x] aislamiento multi-tenant
-- [x] contratos HTTP estrictos
-- [x] activación/desactivación lógica
-- [x] endpoints de activación/desactivación
-- [x] aislamiento multi-tenant del ciclo de vida
-- [x] tests Repository
-- [x] tests Service
-- [x] tests API
-- [x] tests cross-tenant
-- [x] vertical slice backend completado
-- [x] integración frontend
-
-## Fase 8 — Invoicing
+## Fase 8C — Invoicing
 
 - [ ] modelo Invoice
 - [ ] líneas de factura
-- [ ] cálculo de bases imponibles
+- [ ] snapshots históricos
+- [ ] relación con entregas pendientes de facturar
+- [ ] agrupación de entregas cuando corresponda
+- [ ] bases imponibles
 - [ ] impuestos
 - [ ] totales
 - [ ] numeración
@@ -2034,18 +857,28 @@ y no números de coma flotante.
 - [ ] PDF
 - [ ] QR
 - [ ] tests de concurrencia
-- [ ] integración frontend
+- [ ] frontend
+
+## Fase 8D — Payments
+
+- [ ] modelo Payment
+- [ ] relación con Invoice
+- [ ] cobro total/parcial
+- [ ] estado de cobro derivado
+- [ ] API
+- [ ] tests
+- [ ] frontend
 
 ## Fase 9 — VERI\*FACTU
 
 - [ ] BillingRecord
-- [ ] ALTA
-- [ ] ANULACION
-- [ ] SUBSANACION
+- [ ] registros de alta
+- [ ] anulación
+- [ ] subsanación/corrección según especificación aplicable
 - [ ] encadenamiento
 - [ ] hash
 - [ ] validación de cadena
-- [ ] XML
+- [ ] formatos exigidos
 - [ ] integración AEAT
 - [ ] respuestas
 - [ ] reintentos
@@ -2059,72 +892,67 @@ y no números de coma flotante.
 
 # Próximos pasos
 
-El proyecto dispone actualmente de dos vertical slices principales completados de extremo a extremo:
+Estado de los vertical slices principales:
 
 ```text
-Product
-Customer
+Product  → backend + frontend
+Customer → backend + frontend
+Order    → backend completo
 ```
 
-Ambos recorren actualmente:
+Siguiente paso inmediato:
 
 ```text
-Login
-  ↓
-Autenticación JWT
-  ↓
-Frontend React
-  ↓
-API FastAPI protegida
-  ↓
-Service / Repository
-  ↓
-PostgreSQL
+Order frontend
+     ↓
+Delivery Note backend
+     ↓
+Delivery Note frontend
+     ↓
+Invoice
+     ↓
+Payment
+     ↓
+VERI*FACTU
 ```
-
-Product permite listar, crear, editar y gestionar su ciclo de vida.
-
-Customer permite listar, crear, editar y gestionar su ciclo de vida, con aislamiento por tenant y persistencia real verificados manualmente desde el navegador.
-
-El siguiente paso será comenzar el núcleo de facturación mediante **Invoice**, que servirá como base para las funcionalidades específicas de VERI\*FACTU.
-
-Las mejoras de routing, layout, experiencia de usuario y arquitectura frontend se irán incorporando progresivamente a medida que aparezcan nuevas pantallas y dominios.
 
 ---
 
 # Estado de calidad actual
 
-En el checkpoint actual:
-
 ```text
-Backend tests:      201 passed, 1 warning
-Product API tests:  22 passed
-Product tests:      45 passed
-Customer API tests: 23 passed
-Customer tests:     48 passed
-Alembic:            synchronized
-Database head:      42772bf4e57d
-Email identity:     case-insensitive
-Registration:       atomic bootstrap implemented
-Business API:       tenant-protected
-User API:           tenant-protected
-Product API:        tenant-protected
-Customer API:       tenant-protected
-Product lifecycle:  HTTP + tenant-protected
-Customer lifecycle: HTTP + tenant-protected
-Tenant model:       Business/User/Product/Customer isolation
-Auth/Authz:         initial phase completed
-Product backend:    vertical slice completed
-Product frontend:   create/read/update/lifecycle integrated
-Customer backend:   vertical slice completed
-Customer frontend:  create/read/update/lifecycle integrated
-Frontend build:     passing
-Frontend lint:      passing
-End-to-end Customer: manually verified
-Next step:          Invoice domain
+Backend tests:        260 passed, 1 warning
+
+Product API tests:     22 passed
+Product total tests:   45 passed
+
+Customer API tests:    23 passed
+Customer total tests:  48 passed
+
+Order API tests:       27 passed
+Order Repository:       6 passed
+Order Service:         26 passed
+Order total tests:     59 passed
+
+Alembic:               synchronized
+Database head:         6a6fffec7d19
+
+Business API:          tenant-protected
+User API:              tenant-protected
+Product API:           tenant-protected
+Customer API:          tenant-protected
+Order API:             tenant-protected
+
+Product frontend:      integrated
+Customer frontend:     integrated
+Order backend:         vertical slice completed
+Order frontend:        next step
+
+Frontend build:        passing
+Frontend lint:         passing
 ```
 
-El proyecto mantiene como principio que cada nuevo bloque funcional debe cerrarse con:
+Cada bloque funcional se cierra siguiendo:
 
 ```text
 implementación
