@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import ProductsPage from './pages/ProductsPage';
 import CustomerPage from './pages/CustomerPage';
 import OrdersPage from './pages/OrdersPage';
+import DeliveryNotesPage from './pages/DeliveryNotesPage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path='/products' element={<ProductsPage />} />
         <Route path='/customers' element={<CustomerPage />} />
         <Route path='/orders' element={<OrdersPage />} />
+        <Route path='/delivery-notes' element={<DeliveryNotesPage />} />
         <Route path='/' element={<Navigate to='/login' replace />} />
       </Routes>
     </BrowserRouter>
