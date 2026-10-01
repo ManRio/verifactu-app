@@ -22,11 +22,11 @@ Cliente → Pedido → Albarán → Factura → Pago
 | Clientes    | ✅      | ✅       |
 | Pedidos     | ✅      | ✅       |
 | Albaranes   | ✅      | ✅       |
-| Facturas    | 🚧      | 🚧       |
+| Facturas    | ✅      | 🚧       |
 | Pagos       | 🚧      | 🚧       |
 | VERI\*FACTU | 🚧      | 🚧       |
 
-Actualmente están terminados de extremo a extremo los flujos de **Productos**, **Clientes**, **Pedidos** y **Albaranes**.
+Actualmente están terminados de extremo a extremo los flujos de **Productos**, **Clientes**, **Pedidos** y **Albaranes**. El backend de **Facturas** también está implementado y validado.
 
 ---
 
@@ -47,6 +47,13 @@ Actualmente están terminados de extremo a extremo los flujos de **Productos**, 
 - PostgreSQL + Alembic;
 - tests de Repository, Service y API;
 - frontend React para Products, Customers, Orders y Delivery Notes.
+- facturas en estado `DRAFT / ISSUED`;
+- agrupación de albaranes confirmados del mismo cliente;
+- snapshots de emisor, cliente y líneas de factura;
+- cálculo de base imponible, impuestos y total de factura;
+- numeración correlativa por serie al emitir;
+- bloqueo de albaranes ya facturados;
+- facturas emitidas inmutables;
 
 ---
 
@@ -148,20 +155,35 @@ El flujo manual de entregas parciales y control de sobreentrega ha sido validado
 
 ---
 
+## Facturas
+
+El backend de facturación permite crear borradores a partir de uno o varios albaranes confirmados del mismo cliente.
+
+Las facturas almacenan snapshots del emisor, cliente y líneas para preservar el contenido histórico del documento.
+
+Los borradores no consumen numeración definitiva. Al emitir una factura se asigna una numeración correlativa por serie:
+
+```text
+F-000001
+F-000002
+F-000003
+
+---
+
 ## Seguridad y multi-tenant
 
 El tenant se obtiene del usuario autenticado mediante `business_id`.
 
 Los recursos de otros tenants se ocultan mediante `404 Not Found`.
 
-Este patrón se aplica actualmente a Business, User, Product, Customer, Order y Delivery Note.
+Este patrón se aplica actualmente a Business, User, Product, Customer, Order, Delivery Note e Invoice.
 
 ---
 
 ## Tests
 
 ```text
-318 passed, 1 warning
+371 passed, 1 warning
 ```
 
 Desglose principal:
@@ -171,6 +193,7 @@ Product        45 tests
 Customer       48 tests
 Order          59 tests
 Delivery Note  58 tests
+Invoice        53 tests
 ```
 
 El warning conocido procede de la integración entre `Starlette TestClient` y `httpx` y no afecta actualmente al resultado de la suite.
@@ -182,7 +205,7 @@ El warning conocido procede de la integración entre `Starlette TestClient` y `h
 ```text
 PostgreSQL
 Alembic
-Head: 0137b663b529
+Head: 36344f288a54
 ```
 
 Sin operaciones pendientes:
@@ -220,10 +243,10 @@ npm run lint
 ## Roadmap
 
 ```text
-Invoice
-   ↓
+Invoice frontend
+      ↓
 Payment
-   ↓
+      ↓
 VERI*FACTU
 ```
 

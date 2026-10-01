@@ -101,6 +101,11 @@ class Customer(Base):
         back_populates="customer",
     )
 
+    invoices = relationship(
+        "Invoice",
+        back_populates="customer",
+    )
+
     __table_args__ = (
         Index(
             "uq_customers_business_id_tax_id",

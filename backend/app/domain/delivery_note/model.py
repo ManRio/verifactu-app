@@ -78,6 +78,11 @@ class DeliveryNote(Base):
         order_by="DeliveryNoteLine.position",
     )
 
+    invoice_links = relationship(
+        "InvoiceDeliveryNote",
+        back_populates="delivery_note",
+    )
+
 
 class DeliveryNoteLine(Base):
     __tablename__ = "delivery_note_lines"

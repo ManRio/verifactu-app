@@ -98,3 +98,13 @@ class Business(Base):
     "DeliveryNote",
     back_populates="business",
 )
+
+    invoice_series = relationship(
+        "InvoiceSeries",
+        back_populates="business",
+    )
+
+    invoices = relationship(
+        "Invoice",
+        back_populates="business",
+    )
