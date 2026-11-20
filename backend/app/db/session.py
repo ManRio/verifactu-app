@@ -3,7 +3,6 @@ from sqlalchemy.orm import sessionmaker
 
 from app.core.config import settings
 
-
 DATABASE_URL = URL.create(
     drivername="postgresql+psycopg",
     username=settings.postgres_user,
@@ -22,7 +21,7 @@ SessionLocal = sessionmaker(
 )
 
 # Register all SQLAlchemy models before mapper configuration.
-import app.db.models  # noqa: E402, F401
+import app.db.models  # noqa: F401
 
 
 def get_db():

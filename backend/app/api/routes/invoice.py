@@ -20,8 +20,8 @@ from app.domain.invoice.service import (
     InvoiceDeliveryNoteAlreadyInvoicedError,
     InvoiceDeliveryNoteNotConfirmedError,
     InvoiceDeliveryNoteNotFoundError,
-    InvoiceDeliveryNoteTenantError,
     InvoiceDeliveryNotesRequiredError,
+    InvoiceDeliveryNoteTenantError,
     InvoiceDuplicateDeliveryNoteError,
     InvoiceInvalidSeriesError,
     InvoiceMixedCustomerError,
@@ -29,7 +29,6 @@ from app.domain.invoice.service import (
     InvoiceOrderNotFoundError,
     InvoiceService,
 )
-
 
 router = APIRouter(
     prefix="/invoices",

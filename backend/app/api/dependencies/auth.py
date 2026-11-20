@@ -8,7 +8,6 @@ from app.domain.business.repository import BusinessRepository
 from app.domain.user.model import User
 from app.domain.user.repository import UserRepository
 
-
 bearer_scheme = HTTPBearer(
     auto_error=False,
 )

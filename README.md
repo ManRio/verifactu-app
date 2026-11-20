@@ -197,7 +197,15 @@ npm run build
 
 ## Pruebas y migraciones
 
-Hay tests de Repository, Service y API para los principales módulos comerciales. En una ejecución registrada durante el desarrollo se informaron **371 pruebas superadas**, pero **ese resultado no se ha vuelto a ejecutar ni verificado como parte de esta actualización del README**. Para conocer el estado real, ejecuta `pytest -q` en tu entorno local.
+El backend cuenta con pruebas automatizadas de Repository, Service y API para los principales módulos comerciales.
+
+**Última verificación local (20/11/2026):**
+
+- Pytest: **371 pruebas superadas**, 1 warning conocido de compatibilidad entre Starlette TestClient y httpx.
+- Ruff: **All checks passed!**
+- Alembic: migración `36344f288a54` aplicada y sin diferencias de esquema pendientes.
+
+La configuración de Ruff contempla el uso de `Depends()` en FastAPI y excluye del análisis habitual las migraciones históricas generadas por Alembic.
 
 Las migraciones se gestionan con Alembic. El último cambio de esquema registrado para facturas corresponde a la revisión `36344f288a54`; el estado efectivo de la base de datos debe comprobarse con:
 

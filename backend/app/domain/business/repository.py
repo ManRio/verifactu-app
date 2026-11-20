@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.domain.business.model import Business
 from app.domain.business.schemas import BusinessCreate, BusinessUpdate
 
+
 class BusinessRepository:
     def __init__(self, db: Session):
         self.db = db

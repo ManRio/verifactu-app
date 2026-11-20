@@ -28,13 +28,7 @@ def test_decode_access_token_rejects_tampered_token():
         + signature[1:]
     )
 
-    tampered_token = ".".join(
-        [
-            header,
-            payload,
-            tampered_signature,
-        ]
-    )
+    tampered_token = f"{header}.{payload}.{tampered_signature}"
 
     with pytest.raises(
         ValueError,
