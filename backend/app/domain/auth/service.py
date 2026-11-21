@@ -7,6 +7,7 @@ from app.domain.auth.schemas import (
     TokenResponse,
 )
 from app.domain.business.service import BusinessService
+from app.domain.subscription.model import Subscription
 from app.domain.user.schemas import UserCreate
 from app.domain.user.service import UserService
 
@@ -58,6 +59,7 @@ class AuthService:
                 subject=str(user.id)
             )
 
+            self.db.add(Subscription(business_id=business.id, status="PENDING"))
             self.db.commit()
 
             return TokenResponse(

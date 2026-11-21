@@ -1,6 +1,6 @@
+import { API_URL, apiFetch } from '../lib/api';
 import type { Order, OrderLineInput } from '../types/order';
 
-const API_URL = 'http://127.0.0.1:8000';
 
 export type CreateOrderData = {
   customer_id: number;
@@ -46,7 +46,7 @@ async function getErrorMessage(
 }
 
 export async function getOrders(): Promise<Order[]> {
-  const response = await fetch(`${API_URL}/orders`, {
+  const response = await apiFetch(`${API_URL}/orders`, {
     headers: getAuthHeaders(),
   });
 
@@ -60,7 +60,7 @@ export async function getOrders(): Promise<Order[]> {
 export async function getOrder(
   orderId: number,
 ): Promise<Order> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/orders/${orderId}`,
     {
       headers: getAuthHeaders(),
@@ -82,7 +82,7 @@ export async function getOrder(
 export async function createOrder(
   data: CreateOrderData,
 ): Promise<Order> {
-  const response = await fetch(`${API_URL}/orders`, {
+  const response = await apiFetch(`${API_URL}/orders`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -104,7 +104,7 @@ export async function updateOrder(
   orderId: number,
   data: UpdateOrderData,
 ): Promise<Order> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/orders/${orderId}`,
     {
       method: 'PATCH',
@@ -128,7 +128,7 @@ export async function updateOrder(
 export async function confirmOrder(
   orderId: number,
 ): Promise<Order> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/orders/${orderId}/confirm`,
     {
       method: 'PATCH',
@@ -151,7 +151,7 @@ export async function confirmOrder(
 export async function cancelOrder(
   orderId: number,
 ): Promise<Order> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/orders/${orderId}/cancel`,
     {
       method: 'PATCH',

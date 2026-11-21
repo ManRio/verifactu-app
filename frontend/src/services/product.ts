@@ -1,6 +1,6 @@
+import { API_URL, apiFetch } from '../lib/api';
 import type { Product } from '../types/product';
 
-const API_URL = 'http://127.0.0.1:8000';
 
 export type CreateProductData = {
   name: string;
@@ -28,7 +28,7 @@ function getAuthHeaders() {
 }
 
 export async function getProducts(): Promise<Product[]> {
-  const response = await fetch(`${API_URL}/products`, {
+  const response = await apiFetch(`${API_URL}/products`, {
     headers: getAuthHeaders(),
   });
 
@@ -40,7 +40,7 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function createProduct(data: CreateProductData): Promise<Product> {
-  const response = await fetch(`${API_URL}/products`, {
+  const response = await apiFetch(`${API_URL}/products`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -61,7 +61,7 @@ export async function updateProduct(
   productId: number,
   data: UpdateProductData,
 ): Promise<Product> {
-  const response = await fetch(`${API_URL}/products/${productId}`, {
+  const response = await apiFetch(`${API_URL}/products/${productId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -79,7 +79,7 @@ export async function updateProduct(
 }
 
 export async function activateProduct(productId: number): Promise<Product> {
-  const response = await fetch(`${API_URL}/products/${productId}/activate`, {
+  const response = await apiFetch(`${API_URL}/products/${productId}/activate`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });
@@ -92,7 +92,7 @@ export async function activateProduct(productId: number): Promise<Product> {
 }
 
 export async function deactivateProduct(productId: number): Promise<Product> {
-  const response = await fetch(`${API_URL}/products/${productId}/deactivate`, {
+  const response = await apiFetch(`${API_URL}/products/${productId}/deactivate`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });

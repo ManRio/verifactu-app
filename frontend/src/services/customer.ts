@@ -1,6 +1,6 @@
+import { API_URL, apiFetch } from '../lib/api';
 import type { Customer } from '../types/customer';
 
-const API_URL = 'http://127.0.0.1:8000';
 
 export type CreateCustomerData = {
   tax_id: string | null;
@@ -38,7 +38,7 @@ function getAuthHeaders() {
 }
 
 export async function getCustomers(): Promise<Customer[]> {
-  const response = await fetch(`${API_URL}/customers`, {
+  const response = await apiFetch(`${API_URL}/customers`, {
     headers: getAuthHeaders(),
   });
 
@@ -52,7 +52,7 @@ export async function getCustomers(): Promise<Customer[]> {
 export async function createCustomer(
   data: CreateCustomerData,
 ): Promise<Customer> {
-  const response = await fetch(`${API_URL}/customers`, {
+  const response = await apiFetch(`${API_URL}/customers`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -73,7 +73,7 @@ export async function updateCustomer(
   customerId: number,
   data: UpdateCustomerData,
 ): Promise<Customer> {
-  const response = await fetch(`${API_URL}/customers/${customerId}`, {
+  const response = await apiFetch(`${API_URL}/customers/${customerId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -93,7 +93,7 @@ export async function updateCustomer(
 export async function activateCustomer(
   customerId: number,
 ): Promise<Customer> {
-  const response = await fetch(`${API_URL}/customers/${customerId}/activate`, {
+  const response = await apiFetch(`${API_URL}/customers/${customerId}/activate`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });
@@ -108,7 +108,7 @@ export async function activateCustomer(
 export async function deactivateCustomer(
   customerId: number,
 ): Promise<Customer> {
-  const response = await fetch(`${API_URL}/customers/${customerId}/deactivate`, {
+  const response = await apiFetch(`${API_URL}/customers/${customerId}/deactivate`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
   });

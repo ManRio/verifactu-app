@@ -13,26 +13,31 @@ El proyecto modela un flujo comercial completo, desde la creación de un pedido 
 Cliente → Pedido → Albarán → Factura → Pago
 ```
 
-Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La gestión de pagos está pendiente.**
+Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La gestión de pagos de las facturas sigue pendiente.**
+
+La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negocio, autenticación y planes mensuales **simulados**. No procesa tarjetas, cobros ni renovaciones automáticas.
 
 ## Estado del desarrollo
 
-| Módulo                         | Backend | Frontend | Estado                                                                        |
-| ------------------------------ | :-----: | :------: | ----------------------------------------------------------------------------- |
-| Autenticación y usuarios       |   ✅    |    🟡    | Registro y acceso vía API; pantalla de inicio de sesión                       |
-| Productos                      |   ✅    |    ✅    | Alta, edición, listado, activación/desactivación y paginación en cliente      |
-| Clientes                       |   ✅    |    ✅    | Gestión integrada                                                             |
-| Pedidos                        |   ✅    |    ✅    | Creación, edición de borradores, confirmación, cancelación y ficha de detalle |
-| Albaranes                      |   ✅    |    ✅    | Entregas parciales, control de cantidades y ficha de detalle                  |
-| Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada           |
-| Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                     |
-| Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                              |
+| Módulo                         | Backend | Frontend | Estado                                                                                       |
+| ------------------------------ | :-----: | :------: | -------------------------------------------------------------------------------------------- |
+| Autenticación y usuarios       |   ✅    |    ✅    | Landing pública, registro de empresa, login, comprobación de sesión y redirección al caducar |
+| Productos                      |   ✅    |    ✅    | Alta, edición, listado, activación/desactivación y paginación en cliente                     |
+| Clientes                       |   ✅    |    ✅    | Gestión integrada                                                                            |
+| Pedidos                        |   ✅    |    ✅    | Creación, edición de borradores, confirmación, cancelación y ficha de detalle                |
+| Albaranes                      |   ✅    |    ✅    | Entregas parciales, control de cantidades y ficha de detalle                                 |
+| Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada                          |
+| Suscripciones de demostración  |   ✅    |    ✅    | Planes ficticios, checkout sin tarjeta y consulta del período mensual                        |
+| Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                                    |
+| Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                                             |
 
 **Leyenda:** ✅ implementado · 🟡 parcial · ⏳ pendiente. Los estados describen las funcionalidades presentes en el repositorio, no una certificación de preparación para producción.
 
 ### Funcionalidades implementadas
 
-- **Seguridad y multiempresa:** autenticación con JWT, vinculación de recursos a `business_id` y aislamiento de datos entre empresas.
+- **Seguridad y multiempresa:** autenticación con JWT, vinculación de recursos a `business_id` y aislamiento de datos entre empresas. Verificación de sesión mediante `GET /auth/me` y redirección al login cuando el token deja de ser válido.
+- **Entrada comercial:** landing pública, registro de empresa con usuario administrador, elección de plan ficticio, checkout de demostración y pantalla «Mi suscripción».
+- **Suscripciones demo:** persistencia por empresa en PostgreSQL; estado `PENDING` tras el registro y `DEMO_ACTIVE` tras el checkout; fecha de fin calculada a un mes natural. Los negocios existentes sin fila de suscripción mantienen compatibilidad. No se cobra dinero ni se gestionan tarjetas.
 - **Productos y clientes:** creación, consulta y actualización; operaciones de activación/desactivación donde corresponda.
 - **Pedidos:** líneas con datos comerciales históricos (_snapshots_), cálculo de base imponible, impuestos y total; estados `DRAFT`, `CONFIRMED` y `CANCELLED`. En la interfaz pueden abrirse fichas de detalle desde el listado.
 - **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio. La ficha de detalle enlaza con el pedido de origen.
@@ -127,6 +132,43 @@ Las fichas de detalle pueden abrirse directamente mediante estas rutas de React 
 
 Las rutas se protegen mediante la sesión de la aplicación y el backend valida la pertenencia de los recursos a la empresa autenticada. La disponibilidad de una ficha de consulta no implica permiso para modificar un documento confirmado o emitido.
 
+## Landing, sesiones y contratación simulada
+
+### Recorrido de un nuevo negocio
+
+```text
+Landing pública (/) → Registro (/register) → Checkout simulado (/checkout)
+       → Panel de gestión (/products) → Mi suscripción (/subscription)
+```
+
+- **Landing (`/`):** presenta características y precios ilustrativos, con acceso a registro e inicio de sesión.
+- **Registro (`/register`):** envía `POST /auth/register` y crea empresa, primer usuario y suscripción `PENDING` en la misma transacción. El usuario recibe un JWT para continuar al checkout.
+- **Login (`/login`):** utiliza `POST /auth/login`. El guard de rutas privadas comprueba localmente la expiración del JWT y consulta `GET /auth/me` para validar la sesión en el servidor.
+- **Checkout (`/checkout`):** activa uno de los planes ficticios con `POST /subscriptions/demo-checkout`, sin introducir tarjeta ni procesar pagos.
+- **Mi suscripción (`/subscription`):** consulta el plan actual, fecha de activación y fin del período mediante `GET /subscriptions/me`.
+
+| Plan demo   | Código    | Precio ilustrativo | Cobro real |
+| ----------- | --------- | -----------------: | ---------- |
+| Inicio      | `STARTER` |        12,90 €/mes | **0 €**    |
+| Profesional | `PRO`     |        24,90 €/mes | **0 €**    |
+
+La activación fija el siguiente vencimiento en **un mes natural**; no hay renovación automática, recibos ni pasarela de pago. Cambiar de plan o volver a activarlo reinicia el período de demostración en el estado actual del prototipo.
+
+### Endpoints de la Fase 4
+
+| Método | Ruta                           | Acceso      | Función                                                  |
+| ------ | ------------------------------ | ----------- | -------------------------------------------------------- |
+| `POST` | `/auth/register`               | Público     | Registrar negocio, administrador y suscripción pendiente |
+| `POST` | `/auth/login`                  | Público     | Obtener JWT                                              |
+| `GET`  | `/auth/me`                     | Autenticado | Validar sesión y consultar usuario                       |
+| `GET`  | `/subscriptions/plans`         | Público     | Consultar planes de demostración                         |
+| `GET`  | `/subscriptions/me`            | Autenticado | Consultar la suscripción de la empresa                   |
+| `POST` | `/subscriptions/demo-checkout` | Autenticado | Activar un plan simulado, sin cobro                      |
+
+El backend exige un plan `DEMO_ACTIVE` no caducado en las rutas que utilizan la dependencia `get_current_business_id`, devolviendo `402` si falta o ha caducado. **Este control aún no es una autorización de licencias exhaustiva:** deben revisarse las demás rutas y dependencias antes de cualquier despliegue público. Las empresas anteriores que no tengan registro de suscripción pueden seguir accediendo al panel.
+
+El frontend comparte la URL de API mediante `VITE_API_URL` y una función HTTP común que gestiona respuestas `401` y redirige al checkout ante determinadas respuestas `402`. **El JWT sigue almacenándose en `localStorage`.** Antes de producción harán falta, entre otras medidas, sesiones seguras, revocación/renovación, recuperación de contraseña, rate limiting, protección CSRF cuando corresponda y pruebas de autorización de extremo a extremo.
+
 ## Puesta en marcha local
 
 ### Requisitos
@@ -194,9 +236,11 @@ npm install
 npm run dev
 ```
 
-Interfaz local: `http://localhost:5173`. **Mantén el mismo puerto** al iniciar Vite: actualmente FastAPI solo autoriza por CORS los orígenes `http://localhost:5173` y `http://127.0.0.1:5173`. Si Vite cambia a `5174` por tener `5173` ocupado, el inicio de sesión será bloqueado por CORS hasta que recuperes el puerto o actualices la configuración del backend.
+Interfaz local: `http://localhost:5173`. Vite está configurado con `strictPort: true`: si el puerto está ocupado, se detiene en vez de pasar silenciosamente a `5174`. FastAPI permite en desarrollo los orígenes `localhost`/`127.0.0.1` en los puertos `5173` y `5174`.
 
-Para iniciar sesión, registra primero una empresa y su usuario mediante `POST /auth/register` en la documentación interactiva de la API. Después utiliza la página `/login`.
+Abre la landing en `/`, crea una empresa desde `/register`, completa el plan ficticio en `/checkout` y entra en el panel. Los negocios anteriores a la Fase 4 conservan su acceso. **Mantén Uvicorn ejecutándose en otra terminal**: `pytest` no deja el servidor iniciado.
+
+Para usar otra URL de API, copia `frontend/.env.example` a `frontend/.env` y ajusta `VITE_API_URL`. No incluyas secretos en variables `VITE_*`, ya que forman parte del código entregado al navegador.
 
 Comprobaciones adicionales del frontend:
 
@@ -205,27 +249,29 @@ npm run lint
 npm run build
 ```
 
-> Actualmente los servicios del frontend emplean direcciones locales de API definidas en código (`localhost:8000` y `127.0.0.1:8000`). Centralizar esta configuración mediante variables de entorno es una mejora pendiente antes de desplegar.
+> El frontend emplea `VITE_API_URL` (predeterminado: `http://127.0.0.1:8000`) y una función HTTP común para detectar sesiones no válidas. No equivale a una arquitectura de autenticación lista para producción.
 
 ## Pruebas y migraciones
 
 El backend cuenta con pruebas automatizadas en capas Repository, Service y API.
 
-**Última verificación registrada del backend (20/11/2026):**
+**Última verificación registrada del backend (21/11/2026, Fase 4):**
 
-- Pytest: **371 pruebas superadas**, con 1 advertencia conocida relacionada con Starlette TestClient y `httpx`.
-- Ruff: `All checks passed!`.
-- Alembic: revisión `36344f288a54` aplicada y `alembic check` sin diferencias pendientes.
+- Pytest: **380 pruebas superadas**, con 1 warning conocido de compatibilidad entre Starlette TestClient y `httpx`.
+- Ruff: `All checks passed!` tras ordenar las importaciones.
+- Alembic: migración `b8f43c12ad90` (`add demo subscriptions`) aplicada y `alembic check` sin operaciones nuevas.
+- La prueba de la dependencia de empresa se actualizó para proporcionar una sesión de SQLAlchemy simulada; se añadieron comprobaciones de suscripción pendiente y activa.
 
-**Última verificación registrada del frontend (21/11/2026, Fase 3):**
+**Última verificación registrada del frontend (21/11/2026, Fase 4):**
 
 - `npm run lint`: sin errores.
 - `npm run build`: compilación TypeScript y build de Vite 8.3.0 completados.
-- Pruebas funcionales manuales: consulta de pedidos y albaranes, enlaces entre documentos, creación y edición de borradores de factura, emisión con confirmación, visualización tras recarga e inmutabilidad de facturas emitidas. Se emitió una factura de prueba (`F-000001`) en el entorno local.
+- Fase 3: consulta de pedidos y albaranes, enlaces entre documentos, borradores y emisión de facturas de prueba; se emitió `F-000001` en local.
+- Fase 4: comprobaciones manuales satisfactorias de landing, registro, checkout simulado, acceso al panel, «Mi suscripción», cierre y reinicio de sesión, compatibilidad del usuario anterior y redirección de sesión caducada.
 
-> La validación manual no sustituye pruebas automatizadas de interfaz ni verifica conformidad normativa. Los resultados del backend corresponden a la ejecución del 20/11/2026 y deben repetirse antes de la entrega si se modifican sus archivos.
+> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Los resultados indicados corresponden al entorno de desarrollo del 21/11/2026.
 
-Las migraciones se gestionan con Alembic. El último cambio de esquema registrado para facturas corresponde a la revisión `36344f288a54`; el estado efectivo de la base de datos debe comprobarse con:
+Las migraciones se gestionan con Alembic. La revisión `36344f288a54` incorpora las tablas de facturación y `b8f43c12ad90` añade la tabla `subscriptions`. El esquema efectivo debe comprobarse con:
 
 ```powershell
 alembic current
@@ -242,15 +288,17 @@ alembic check
 - [x] Paginación local de productos.
 - [x] Fichas de detalle de pedidos, albaranes y facturas, con navegación entre documentos relacionados.
 - [x] **Interfaz de facturas:** listado, filtros, detalle, creación y edición de borradores, emisión con confirmación y estados de carga/error.
+- [x] **Fase 4 — experiencia SaaS demo:** landing, registro, checkout ficticio, pantalla de suscripción, validación de sesión y migración de suscripciones.
+- [x] **Calidad de Fase 4:** 380 pruebas backend, lint y build frontend, y validación funcional manual.
 - [ ] **Pagos:** modelo, migración, servicios, endpoints, pruebas y pantalla de cobros.
-- [ ] **Mejoras transversales:** cliente HTTP único, cierre o redirección de sesión ante respuestas `401`, configuración de API y CORS por entorno, paginación/filtros compartidos, accesibilidad y validación UX.
+- [ ] **Mejoras transversales:** revisar autorización por suscripción en todas las rutas; sesiones con cookies seguras y renovación/revocación; recuperación de contraseña; controles de abuso; paginación, accesibilidad y pruebas E2E.
 - [ ] **Documentos:** generación de PDFs imprimibles de pedidos, albaranes y facturas, incorporando cuando proceda los elementos fiscales obligatorios.
 - [ ] **Integración normativa:** analizar y desarrollar los registros de facturación, encadenamiento, huellas/hash, códigos QR, formatos, comunicaciones con la AEAT, gestión de respuestas y errores, conforme a las especificaciones aplicables.
 - [ ] **Endurecimiento y entrega:** revisión de seguridad, pruebas de extremo a extremo, documentación operativa y despliegue de demostración adecuado al estado del proyecto.
 
 ## Alcance y uso previsto
 
-El propósito actual es **educativo y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. No se presenta como ERP completo, servicio de facturación listo para producción ni solución conforme a VERI\*FACTU.
+El propósito actual es **educativo y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. La contratación SaaS es una simulación sin pagos. No se presenta como ERP completo, servicio de facturación listo para producción ni solución conforme a VERI\*FACTU.
 
 ## Autoría
 

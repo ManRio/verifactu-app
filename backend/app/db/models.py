@@ -9,6 +9,7 @@ from app.domain.invoice.model import (
 )
 from app.domain.order.model import Order, OrderLine
 from app.domain.product.model import Product
+from app.domain.subscription.model import Subscription
 from app.domain.user.model import User
 
 __all__ = [
@@ -23,5 +24,6 @@ __all__ = [
     "Order",
     "OrderLine",
     "Product",
+    "Subscription",
     "User",
 ]

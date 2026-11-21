@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { endSession } from '../lib/session';
 
 const navigation = [
   { label: 'Productos', path: '/products', icon: '▦' },
@@ -7,6 +8,7 @@ const navigation = [
   { label: 'Pedidos', path: '/orders', icon: '▤' },
   { label: 'Albaranes', path: '/delivery-notes', icon: '⇄' },
   { label: 'Facturas', path: '/invoices', icon: '▣' },
+  { label: 'Mi plan demo', path: '/subscription', icon: '◇' },
 ];
 
 function DashboardLayout() {
@@ -14,7 +16,7 @@ function DashboardLayout() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   function handleLogout() {
-    localStorage.removeItem('access_token');
+    endSession();
     navigate('/login', { replace: true });
   }
 

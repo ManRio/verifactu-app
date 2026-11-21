@@ -1,3 +1,4 @@
+import { API_URL, apiFetch } from '../lib/api';
 import type {
   Invoice,
   CreateInvoiceData,
@@ -5,7 +6,6 @@ import type {
   IssueInvoiceData,
 } from '../types/invoice';
 
-const API_URL = 'http://127.0.0.1:8000';
 
 // Cabeceras de autenticación
 function getAuthHeaders() {
@@ -42,7 +42,7 @@ async function getErrorMessage(
 
 // Obtener todas las facturas de la empresa
 export async function getInvoices(): Promise<Invoice[]> {
-  const response = await fetch(`${API_URL}/invoices`, {
+  const response = await apiFetch(`${API_URL}/invoices`, {
     headers: getAuthHeaders(),
   });
 
@@ -57,7 +57,7 @@ export async function getInvoices(): Promise<Invoice[]> {
 
 // Obtener una factura por ID
 export async function getInvoice(invoiceId: number): Promise<Invoice> {
-  const response = await fetch(`${API_URL}/invoices/${invoiceId}`, {
+  const response = await apiFetch(`${API_URL}/invoices/${invoiceId}`, {
     headers: getAuthHeaders(),
   });
 
@@ -72,7 +72,7 @@ export async function getInvoice(invoiceId: number): Promise<Invoice> {
 
 // Crear una factura en estado DRAFT
 export async function createInvoice(data: CreateInvoiceData): Promise<Invoice> {
-  const response = await fetch(`${API_URL}/invoices`, {
+  const response = await apiFetch(`${API_URL}/invoices`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -92,7 +92,7 @@ export async function updateInvoice(
   invoiceId: number,
   data: UpdateInvoiceData,
 ): Promise<Invoice> {
-  const response = await fetch(`${API_URL}/invoices/${invoiceId}`, {
+  const response = await apiFetch(`${API_URL}/invoices/${invoiceId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -112,7 +112,7 @@ export async function issueInvoice(
   invoiceId: number,
   data: IssueInvoiceData,
 ): Promise<Invoice> {
-  const response = await fetch(`${API_URL}/invoices/${invoiceId}/issue`, {
+  const response = await apiFetch(`${API_URL}/invoices/${invoiceId}/issue`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),

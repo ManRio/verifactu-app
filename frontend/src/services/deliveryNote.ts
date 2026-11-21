@@ -1,9 +1,9 @@
+import { API_URL, apiFetch } from '../lib/api';
 import type {
   DeliveryNote,
   DeliveryNoteLineInput,
 } from '../types/deliveryNote';
 
-const API_URL = 'http://127.0.0.1:8000';
 
 export type CreateDeliveryNoteData = {
   order_id: number;
@@ -50,7 +50,7 @@ async function getErrorMessage(
 }
 
 export async function getDeliveryNotes(): Promise<DeliveryNote[]> {
-  const response = await fetch(`${API_URL}/delivery-notes`, {
+  const response = await apiFetch(`${API_URL}/delivery-notes`, {
     headers: getAuthHeaders(),
   });
 
@@ -64,7 +64,7 @@ export async function getDeliveryNotes(): Promise<DeliveryNote[]> {
 export async function getDeliveryNote(
   deliveryNoteId: number,
 ): Promise<DeliveryNote> {
-  const response = await fetch(`${API_URL}/delivery-notes/${deliveryNoteId}`, {
+  const response = await apiFetch(`${API_URL}/delivery-notes/${deliveryNoteId}`, {
     headers: getAuthHeaders(),
   });
 
@@ -80,7 +80,7 @@ export async function getDeliveryNote(
 export async function createDeliveryNote(
   data: CreateDeliveryNoteData,
 ): Promise<DeliveryNote> {
-  const response = await fetch(`${API_URL}/delivery-notes`, {
+  const response = await apiFetch(`${API_URL}/delivery-notes`, {
     method: 'POST',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -99,7 +99,7 @@ export async function updateDeliveryNote(
   deliveryNoteId: number,
   data: UpdateDeliveryNoteData,
 ): Promise<DeliveryNote> {
-  const response = await fetch(`${API_URL}/delivery-notes/${deliveryNoteId}`, {
+  const response = await apiFetch(`${API_URL}/delivery-notes/${deliveryNoteId}`, {
     method: 'PATCH',
     headers: getAuthHeaders(),
     body: JSON.stringify(data),
@@ -117,7 +117,7 @@ export async function updateDeliveryNote(
 export async function confirmDeliveryNote(
   deliveryNoteId: number,
 ): Promise<DeliveryNote> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/delivery-notes/${deliveryNoteId}/confirm`,
     {
       method: 'PATCH',
@@ -137,7 +137,7 @@ export async function confirmDeliveryNote(
 export async function cancelDeliveryNote(
   deliveryNoteId: number,
 ): Promise<DeliveryNote> {
-  const response = await fetch(
+  const response = await apiFetch(
     `${API_URL}/delivery-notes/${deliveryNoteId}/cancel`,
     {
       method: 'PATCH',

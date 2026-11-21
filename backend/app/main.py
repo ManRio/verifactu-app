@@ -10,6 +10,7 @@ from app.api.routes.delivery_note import router as delivery_note_router
 from app.api.routes.invoice import router as invoice_router
 from app.api.routes.order import router as order_router
 from app.api.routes.product import router as product_router
+from app.api.routes.subscription import router as subscription_router
 from app.api.routes.user import router as user_router
 from app.db.session import get_db
 
@@ -23,6 +24,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,6 +40,7 @@ app.include_router(customer_router)
 app.include_router(order_router)
 app.include_router(delivery_note_router)
 app.include_router(invoice_router)
+app.include_router(subscription_router)
 
 
 @app.get("/health")
