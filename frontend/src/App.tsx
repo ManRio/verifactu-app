@@ -16,6 +16,7 @@ import DeliveryNotesPage from './pages/DeliveryNotesPage';
 import DeliveryNoteDetailPage from './pages/DeliveryNoteDetailPage';
 import InvoicesPage from './pages/InvoicesPage';
 import InvoiceDetailPage from './pages/InvoiceDetailPage';
+import PaymentsPage from './pages/PaymentsPage';
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
               <Route path='/delivery-notes/:deliveryNoteId' element={<DeliveryNoteDetailPage />} />
               <Route path='/invoices' element={<InvoicesPage />} />
               <Route path='/invoices/:invoiceId' element={<InvoiceDetailPage />} />
+              <Route path='/payments' element={<PaymentsPage />} />
             </Route>
           </Route>
         </Route>

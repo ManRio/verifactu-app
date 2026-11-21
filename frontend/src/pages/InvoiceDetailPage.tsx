@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { downloadDocumentPdf } from '../services/documentPdf';
+import InvoicePaymentsPanel from '../components/InvoicePaymentsPanel';
 
 import { getInvoice, issueInvoice } from '../services/invoice';
 import type { Invoice } from '../types/invoice';
@@ -200,6 +201,12 @@ function InvoiceDetailPage() {
                 </div>
               )}
             </section>
+
+            {invoice.status === 'ISSUED' && (
+              <div className='mb-6'>
+                <InvoicePaymentsPanel invoiceId={invoice.id} />
+              </div>
+            )}
 
             <section className='mb-6 rounded-2xl border border-slate-800 bg-slate-900 p-6'>
               <h2 className='mb-3 text-lg font-semibold'>Albaranes incluidos</h2>

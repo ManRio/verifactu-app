@@ -13,7 +13,7 @@ El proyecto modela un flujo comercial completo, desde la creación de un pedido 
 Cliente → Pedido → Albarán → Factura → Pago
 ```
 
-Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La gestión de pagos de las facturas sigue pendiente.**
+Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La Fase 6 añade el registro manual de cobros totales y parciales, con saldo pendiente calculado e historial de anulaciones. No procesa dinero.**
 
 La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negocio, autenticación y planes mensuales **simulados**. No procesa tarjetas, cobros ni renovaciones automáticas.
 
@@ -31,7 +31,7 @@ La **Fase 5** añade la descarga de **PDF A4 de demostración** para pedidos, al
 | Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada                          |
 | Suscripciones de demostración  |   ✅    |    ✅    | Planes ficticios, checkout sin tarjeta y consulta del período mensual                        |
 | Documentos PDF de demostración |   ✅    |    ✅    | Descarga autenticada de pedidos, albaranes y facturas emitidas                               |
-| Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                                    |
+| Cobros de facturas (Fase 6)    |   ✅    |    ✅    | Registro manual de cobros, saldos parciales y totales, anulación auditable                   |
 | Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                                             |
 
 **Leyenda:** ✅ implementado · 🟡 parcial · ⏳ pendiente. Los estados describen las funcionalidades presentes en el repositorio, no una certificación de preparación para producción.
@@ -45,6 +45,7 @@ La **Fase 5** añade la descarga de **PDF A4 de demostración** para pedidos, al
 - **Pedidos:** líneas con datos comerciales históricos (_snapshots_), cálculo de base imponible, impuestos y total; estados `DRAFT`, `CONFIRMED` y `CANCELLED`. En la interfaz pueden abrirse fichas de detalle desde el listado.
 - **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio. La ficha de detalle enlaza con el pedido de origen.
 - **Facturas:** borradores a partir de uno o varios albaranes confirmados del mismo cliente, snapshots de emisor, receptor y líneas, cálculo de importes, emisión y numeración correlativa por serie. El frontend permite crear y editar borradores, consultar su detalle y emitirlos con confirmación. Las facturas emitidas no son editables mediante la API actual y se impide reutilizar albaranes ya facturados.
+- **Cobros (Fase 6):** registro de transferencias, efectivo, tarjetas ya cobradas por otro medio y otros cobros; consulta de importes abonados y pendientes; anulación de registros sin eliminación del historial. No integra TPV ni pasarela bancaria.
 - **Interfaz:** páginas de Productos, Clientes, Pedidos, Albaranes y Facturas; fichas de detalle y enlaces entre documentos relacionados; navegación lateral adaptable y paginación local de productos (10 por página).
 - **Documentos PDF (Fase 5):** generación A4 con ReportLab, varias páginas cuando es necesario, datos de empresa y cliente, líneas y totales para pedidos y facturas. Los albaranes se presentan como justificantes de entrega sin importes. La factura solo ofrece descarga después de emitirse; todos los PDF llevan una advertencia de demostración.
 - **Persistencia y calidad:** PostgreSQL, migraciones con Alembic y pruebas con Pytest en capas Repository, Service y API.
@@ -195,6 +196,30 @@ El backend exige un plan `DEMO_ACTIVE` no caducado en las rutas que utilizan la 
 
 El frontend comparte la URL de API mediante `VITE_API_URL` y una función HTTP común que gestiona respuestas `401` y redirige al checkout ante determinadas respuestas `402`. **El JWT sigue almacenándose en `localStorage`.** Antes de producción harán falta, entre otras medidas, sesiones seguras, revocación/renovación, recuperación de contraseña, rate limiting, protección CSRF cuando corresponda y pruebas de autorización de extremo a extremo.
 
+## Fase 6 — Cobros manuales de facturas
+
+El módulo `/payments` registra **cobros recibidos fuera de la aplicación** (contabilidad auxiliar),
+no procesa transacciones bancarias ni tarjetas. Solo admite movimientos sobre **facturas emitidas**
+y **no modifica los importes, la numeración ni el estado `ISSUED` de la factura**.
+
+- Cobros parciales o completos en EUR con `Decimal(12,2)`, fecha, medio, referencia y notas.
+- Saldos calculados desde movimientos `RECORDED`; estados `UNPAID`, `PARTIAL` y `PAID`.
+- Anulación de registros erróneos con motivo obligatorio, usuario y fecha, conservando el movimiento original.
+- Imposibilidad de superar el saldo pendiente, con bloqueo transaccional de la factura para evitar carreras concurrentes.
+- Aislamiento por empresa autenticada y verificación de suscripción demo mediante las dependencias existentes.
+- Vista de Cobros y sección de movimientos dentro del detalle de cada factura emitida.
+
+| Método | Endpoint                          | Descripción                                      |
+| ------ | --------------------------------- | ------------------------------------------------ |
+| `GET`  | `/payments`                       | Saldos de las facturas emitidas de la empresa    |
+| `GET`  | `/payments/invoices/{invoice_id}` | Estado e historial de movimientos de una factura |
+| `POST` | `/payments`                       | Registrar un cobro ya recibido                   |
+| `POST` | `/payments/{payment_id}/void`     | Anular movimiento, preservando su auditoría      |
+
+La migración **`c64d9f20e4a1`** incorpora la tabla `payments`. Este módulo no efectúa
+cargos ni transferencias, no devuelve dinero y no realiza conciliación bancaria automática.
+Los cobros de facturas de clientes son independientes de las suscripciones SaaS simuladas.
+
 ## Puesta en marcha local
 
 ### Requisitos
@@ -295,11 +320,19 @@ El backend cuenta con pruebas automatizadas en capas Repository, Service y API.
 - Fase 3: consulta de pedidos y albaranes, enlaces entre documentos, borradores y emisión de facturas de prueba; se emitió `F-000001` en local.
 - Fase 4: comprobaciones manuales satisfactorias de landing, registro, checkout simulado, acceso al panel, «Mi suscripción», cierre y reinicio de sesión, compatibilidad del usuario anterior y redirección de sesión caducada.
 
-**Validación funcional manual de Fase 5 (21/11/2026):** seis comprobaciones satisfactorias de descarga y contenido de PDF para pedidos, albaranes y facturas emitidas, incluida la restricción de borradores. El paquete incorpora pruebas automatizadas adicionales de PDF, autenticación y autorización, pero **su resultado completo debe confirmarse ejecutando `pytest -q` en local**. También conviene repetir `ruff check .`, `npm run lint` y `npm run build` tras la integración.
+**Validación funcional manual de Fase 5 (21/11/2026):** seis comprobaciones satisfactorias de descarga y contenido de PDF para pedidos, albaranes y facturas emitidas, incluida la restricción de borradores. La fase incorporó pruebas automatizadas adicionales de PDF, autenticación y autorización.
 
-> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Los resultados de Pytest enumerados arriba corresponden a la Fase 4; no se atribuye a la Fase 5 un total de pruebas todavía no confirmado.
+**Última ejecución comunicada del backend (21/11/2026, Fase 6):**
 
-Las migraciones se gestionan con Alembic. La revisión `36344f288a54` incorpora las tablas de facturación y `b8f43c12ad90` añade la tabla `subscriptions`. El esquema efectivo debe comprobarse con:
+- Pytest: **396 pruebas superadas**, con 1 advertencia conocida de Starlette TestClient y `httpx`.
+- Alembic: migración `c64d9f20e4a1` (`add invoice payments`) aplicada; `alembic current` muestra esa revisión como `head` y `alembic check` indica `No new upgrade operations detected`.
+- Ruff: la primera ejecución detectó dos ajustes automáticos (`I001` y `PLR1730`) en el módulo de pagos. **Pendiente de confirmar el resultado de la nueva ejecución de `ruff check .` después de `ruff check . --fix`.**
+- Frontend Fase 6: **pendiente de adjuntar las salidas finales** de `npm run lint` y `npm run build` tras esta integración.
+- Pruebas manuales: **6 comprobaciones funcionales realizadas satisfactoriamente**, que incluyen cobro parcial, cobro total, rechazo del exceso de cobro y anulación conservando el historial.
+
+> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Las 396 pruebas corresponden a la ejecución del backend tras integrar la Fase 6; las verificaciones finales de Ruff y del frontend se deben completar antes del commit.
+
+Las migraciones se gestionan con Alembic: `36344f288a54` introduce la facturación, `b8f43c12ad90` añade `subscriptions` y `c64d9f20e4a1` incorpora `payments`. El esquema efectivo se comprueba con:
 
 ```powershell
 alembic current
@@ -318,16 +351,17 @@ alembic check
 - [x] **Interfaz de facturas:** listado, filtros, detalle, creación y edición de borradores, emisión con confirmación y estados de carga/error.
 - [x] **Fase 4 — experiencia SaaS demo:** landing, registro, checkout ficticio, pantalla de suscripción, validación de sesión y migración de suscripciones.
 - [x] **Calidad de Fase 4:** 380 pruebas backend, lint y build frontend, y validación funcional manual.
-- [ ] **Pagos:** modelo, migración, servicios, endpoints, pruebas y pantalla de cobros.
-- [ ] **Mejoras transversales:** revisar autorización por suscripción en todas las rutas; sesiones con cookies seguras y renovación/revocación; recuperación de contraseña; controles de abuso; paginación, accesibilidad y pruebas E2E.
 - [x] **Fase 5 — PDF de demostración:** generación y descarga protegida de pedidos, albaranes y facturas emitidas.
+- [x] **Fase 6 — Cobros:** modelo, migración, registro de cobros manuales, control de saldos, historial de anulaciones, endpoints y pantalla de gestión.
+- [ ] **Cobros futuros:** importación de extractos, conciliación bancaria, devoluciones reales y documentación de recibos.
+- [ ] **Mejoras transversales:** revisar autorización por suscripción en todas las rutas; sesiones con cookies seguras y renovación/revocación; recuperación de contraseña; controles de abuso; paginación, accesibilidad y pruebas E2E.
 - [ ] **Documentación fiscal:** adaptación de los documentos, QR y elementos normativos que resulten exigibles antes del uso real.
 - [ ] **Integración normativa:** analizar y desarrollar los registros de facturación, encadenamiento, huellas/hash, códigos QR, formatos, comunicaciones con la AEAT, gestión de respuestas y errores, conforme a las especificaciones aplicables.
 - [ ] **Endurecimiento y entrega:** revisión de seguridad, pruebas de extremo a extremo, documentación operativa y despliegue de demostración adecuado al estado del proyecto.
 
 ## Alcance y uso previsto
 
-El propósito actual es **educativo y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. La contratación SaaS es una simulación sin pagos. No se presenta como ERP completo, servicio de facturación listo para producción ni solución conforme a VERI\*FACTU.
+El propósito actual es **educativo y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. La contratación SaaS es una simulación sin pagos; los cobros de facturas son anotaciones manuales de importes supuestamente recibidos por otros medios, no transacciones procesadas ni verificadas por esta aplicación. No se presenta como ERP completo, servicio de facturación listo para producción ni solución conforme a VERI\*FACTU.
 
 ## Autoría
 

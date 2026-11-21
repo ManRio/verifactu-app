@@ -8,6 +8,7 @@ const navigation = [
   { label: 'Pedidos', path: '/orders', icon: '▤' },
   { label: 'Albaranes', path: '/delivery-notes', icon: '⇄' },
   { label: 'Facturas', path: '/invoices', icon: '▣' },
+  { label: 'Cobros', path: '/payments', icon: '€' },
   { label: 'Mi plan demo', path: '/subscription', icon: '◇' },
 ];
 
@@ -85,18 +86,6 @@ function DashboardLayout() {
               </NavLink>
             ))}
 
-            <div className='mt-6 border-t border-slate-800 pt-5'>
-              <p className='px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-slate-500'>
-                Próximamente
-              </p>
-
-              <div className='flex items-center justify-between rounded-xl px-4 py-3 text-sm text-slate-500'>
-                <span>Pagos</span>
-                <span className='rounded-full bg-slate-800 px-2 py-1 text-xs'>
-                  Pendiente
-                </span>
-              </div>
-            </div>
           </nav>
 
           <div className='border-t border-slate-800 p-4'>

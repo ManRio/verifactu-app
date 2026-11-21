@@ -8,6 +8,7 @@ from app.domain.invoice.model import (
     InvoiceSeries,
 )
 from app.domain.order.model import Order, OrderLine
+from app.domain.payment.model import Payment
 from app.domain.product.model import Product
 from app.domain.subscription.model import Subscription
 from app.domain.user.model import User
@@ -23,6 +24,7 @@ __all__ = [
     "InvoiceSeries",
     "Order",
     "OrderLine",
+    "Payment",
     "Product",
     "Subscription",
     "User",
