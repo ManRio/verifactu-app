@@ -17,6 +17,7 @@ dependencies = [
     "email-validator",
     "pwdlib[argon2]",
     "PyJWT",
+    "reportlab>=4.2,<5",
 ]
 
 [project.optional-dependencies]

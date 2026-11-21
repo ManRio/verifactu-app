@@ -17,6 +17,8 @@ Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, p
 
 La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negocio, autenticación y planes mensuales **simulados**. No procesa tarjetas, cobros ni renovaciones automáticas.
 
+La **Fase 5** añade la descarga de **PDF A4 de demostración** para pedidos, albaranes y facturas emitidas. Los archivos se generan bajo demanda desde el backend; no constituyen documentos fiscales conformes.
+
 ## Estado del desarrollo
 
 | Módulo                         | Backend | Frontend | Estado                                                                                       |
@@ -28,6 +30,7 @@ La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negoci
 | Albaranes                      |   ✅    |    ✅    | Entregas parciales, control de cantidades y ficha de detalle                                 |
 | Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada                          |
 | Suscripciones de demostración  |   ✅    |    ✅    | Planes ficticios, checkout sin tarjeta y consulta del período mensual                        |
+| Documentos PDF de demostración |   ✅    |    ✅    | Descarga autenticada de pedidos, albaranes y facturas emitidas                               |
 | Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                                    |
 | Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                                             |
 
@@ -43,18 +46,19 @@ La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negoci
 - **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio. La ficha de detalle enlaza con el pedido de origen.
 - **Facturas:** borradores a partir de uno o varios albaranes confirmados del mismo cliente, snapshots de emisor, receptor y líneas, cálculo de importes, emisión y numeración correlativa por serie. El frontend permite crear y editar borradores, consultar su detalle y emitirlos con confirmación. Las facturas emitidas no son editables mediante la API actual y se impide reutilizar albaranes ya facturados.
 - **Interfaz:** páginas de Productos, Clientes, Pedidos, Albaranes y Facturas; fichas de detalle y enlaces entre documentos relacionados; navegación lateral adaptable y paginación local de productos (10 por página).
+- **Documentos PDF (Fase 5):** generación A4 con ReportLab, varias páginas cuando es necesario, datos de empresa y cliente, líneas y totales para pedidos y facturas. Los albaranes se presentan como justificantes de entrega sin importes. La factura solo ofrece descarga después de emitirse; todos los PDF llevan una advertencia de demostración.
 - **Persistencia y calidad:** PostgreSQL, migraciones con Alembic y pruebas con Pytest en capas Repository, Service y API.
 
 ## Tecnologías
 
-| Área              | Tecnologías                                                     |
-| ----------------- | --------------------------------------------------------------- |
-| Backend           | Python 3.13+, FastAPI, Pydantic, SQLAlchemy 2, Psycopg, Alembic |
-| Seguridad         | PyJWT, Argon2                                                   |
-| Base de datos     | PostgreSQL 17 (entorno Docker incluido)                         |
-| Frontend          | React 19, TypeScript, React Router 7, Vite 8, Tailwind CSS 4    |
-| Pruebas y calidad | Pytest, Ruff, ESLint, TypeScript                                |
-| Entorno local     | Docker Compose, Python `venv`, npm                              |
+| Área              | Tecnologías                                                                |
+| ----------------- | -------------------------------------------------------------------------- |
+| Backend           | Python 3.13+, FastAPI, Pydantic, SQLAlchemy 2, Psycopg, Alembic, ReportLab |
+| Seguridad         | PyJWT, Argon2                                                              |
+| Base de datos     | PostgreSQL 17 (entorno Docker incluido)                                    |
+| Frontend          | React 19, TypeScript, React Router 7, Vite 8, Tailwind CSS 4               |
+| Pruebas y calidad | Pytest, Ruff, ESLint, TypeScript                                           |
+| Entorno local     | Docker Compose, Python `venv`, npm                                         |
 
 ## Arquitectura
 
@@ -106,7 +110,7 @@ F-000002
 F-000003
 ```
 
-Se conservan snapshots de emisor, receptor y líneas, además de los importes calculados. El estado final implementado es `ISSUED`: **no existe todavía un flujo de rectificación, anulación fiscal ni generación de documentos PDF**.
+Se conservan snapshots de emisor, receptor y líneas, además de los importes calculados. El estado final implementado es `ISSUED`: **no existe todavía un flujo de rectificación o anulación fiscal**. Desde la Fase 5 se puede descargar un PDF de demostración de una factura emitida; **no equivale a una factura fiscalmente conforme**.
 
 Endpoints disponibles:
 
@@ -131,6 +135,28 @@ Las fichas de detalle pueden abrirse directamente mediante estas rutas de React 
 | Factura   | `/invoices/:invoiceId`            | Datos fiscales registrados, líneas, totales y albaranes asociados |
 
 Las rutas se protegen mediante la sesión de la aplicación y el backend valida la pertenencia de los recursos a la empresa autenticada. La disponibilidad de una ficha de consulta no implica permiso para modificar un documento confirmado o emitido.
+
+## Fase 5 — Descarga de documentos PDF (demostración)
+
+Las fichas de detalle incluyen la acción **«Descargar PDF»**. FastAPI genera el archivo bajo demanda con **ReportLab** a partir de los datos almacenados en PostgreSQL, sin modificar el pedido, el albarán ni la factura.
+
+| Documento       | Endpoint protegido                           | Contenido                                                                               |
+| --------------- | -------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Pedido          | `GET /orders/{order_id}/pdf`                 | Emisor, cliente, líneas, cantidades, impuestos y total                                  |
+| Albarán         | `GET /delivery-notes/{delivery_note_id}/pdf` | Emisor, destinatario, pedido de origen y cantidades entregadas; sin importes            |
+| Factura emitida | `GET /invoices/{invoice_id}/pdf`             | Serie y número, fechas, datos históricos de emisor y cliente, líneas, impuestos y total |
+
+El servidor exige autenticación JWT y autorización por empresa. La descarga de una factura en estado `DRAFT` se rechaza: solo se genera el PDF cuando la factura está en estado `ISSUED` y dispone de número y fecha de emisión. La respuesta utiliza `application/pdf`, descarga como adjunto y `Cache-Control: no-store, private`. Los PDF no se guardan como archivos en el servidor.
+
+El formato es **A4 imprimible**, con paginación para documentos largos y marca visible de **demostración**. No se generan registros fiscales, códigos QR normativos ni comunicaciones con la AEAT. **Estos PDF no deben emplearse como documentación fiscal real** ni presentarse como documentos conformes con VERI\*FACTU.
+
+Para instalar ReportLab con las dependencias del proyecto (desde `backend`, con el entorno virtual activado):
+
+```powershell
+python -m pip install -e ".[dev]"
+```
+
+**Esta fase no necesita migración de PostgreSQL.**
 
 ## Landing, sesiones y contratación simulada
 
@@ -269,7 +295,9 @@ El backend cuenta con pruebas automatizadas en capas Repository, Service y API.
 - Fase 3: consulta de pedidos y albaranes, enlaces entre documentos, borradores y emisión de facturas de prueba; se emitió `F-000001` en local.
 - Fase 4: comprobaciones manuales satisfactorias de landing, registro, checkout simulado, acceso al panel, «Mi suscripción», cierre y reinicio de sesión, compatibilidad del usuario anterior y redirección de sesión caducada.
 
-> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Los resultados indicados corresponden al entorno de desarrollo del 21/11/2026.
+**Validación funcional manual de Fase 5 (21/11/2026):** seis comprobaciones satisfactorias de descarga y contenido de PDF para pedidos, albaranes y facturas emitidas, incluida la restricción de borradores. El paquete incorpora pruebas automatizadas adicionales de PDF, autenticación y autorización, pero **su resultado completo debe confirmarse ejecutando `pytest -q` en local**. También conviene repetir `ruff check .`, `npm run lint` y `npm run build` tras la integración.
+
+> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Los resultados de Pytest enumerados arriba corresponden a la Fase 4; no se atribuye a la Fase 5 un total de pruebas todavía no confirmado.
 
 Las migraciones se gestionan con Alembic. La revisión `36344f288a54` incorpora las tablas de facturación y `b8f43c12ad90` añade la tabla `subscriptions`. El esquema efectivo debe comprobarse con:
 
@@ -292,7 +320,8 @@ alembic check
 - [x] **Calidad de Fase 4:** 380 pruebas backend, lint y build frontend, y validación funcional manual.
 - [ ] **Pagos:** modelo, migración, servicios, endpoints, pruebas y pantalla de cobros.
 - [ ] **Mejoras transversales:** revisar autorización por suscripción en todas las rutas; sesiones con cookies seguras y renovación/revocación; recuperación de contraseña; controles de abuso; paginación, accesibilidad y pruebas E2E.
-- [ ] **Documentos:** generación de PDFs imprimibles de pedidos, albaranes y facturas, incorporando cuando proceda los elementos fiscales obligatorios.
+- [x] **Fase 5 — PDF de demostración:** generación y descarga protegida de pedidos, albaranes y facturas emitidas.
+- [ ] **Documentación fiscal:** adaptación de los documentos, QR y elementos normativos que resulten exigibles antes del uso real.
 - [ ] **Integración normativa:** analizar y desarrollar los registros de facturación, encadenamiento, huellas/hash, códigos QR, formatos, comunicaciones con la AEAT, gestión de respuestas y errores, conforme a las especificaciones aplicables.
 - [ ] **Endurecimiento y entrega:** revisión de seguridad, pruebas de extremo a extremo, documentación operativa y despliegue de demostración adecuado al estado del proyecto.
 

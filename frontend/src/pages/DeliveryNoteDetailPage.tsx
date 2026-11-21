@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { downloadDocumentPdf } from '../services/documentPdf';
 
 import { getCustomers } from '../services/customer';
 import { getDeliveryNote } from '../services/deliveryNote';
@@ -22,6 +23,8 @@ function DeliveryNoteDetailPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [customerName, setCustomerName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
+  const [pdfError, setPdfError] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -55,6 +58,19 @@ function DeliveryNoteDetailPage() {
     };
   }, [id, validId]);
 
+  async function handleDownloadPdf() {
+    if (!note || pdfDownloading) return;
+    setPdfDownloading(true);
+    setPdfError('');
+    try {
+      await downloadDocumentPdf('delivery-note', note.id);
+    } catch (err) {
+      setPdfError(err instanceof Error ? err.message : 'No se pudo descargar el PDF');
+    } finally {
+      setPdfDownloading(false);
+    }
+  }
+
   return (
     <main className='min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8'>
       <div className='mx-auto max-w-5xl'>
@@ -73,11 +89,24 @@ function DeliveryNoteDetailPage() {
                 <h1 className='mt-2 text-3xl font-bold'>Albarán #{note.id}</h1>
                 <p className='mt-2 text-slate-400'>Creado el {formatDateTime(note.created_at)}</p>
               </div>
+              <button
+                type='button'
+                onClick={() => void handleDownloadPdf()}
+                disabled={pdfDownloading}
+                className='rounded-lg border border-emerald-500/60 px-4 py-2 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/10 disabled:opacity-50'
+              >
+                {pdfDownloading ? 'Generando PDF...' : 'Descargar PDF'}
+              </button>
               <span className='rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm font-semibold'>
                 {statusLabels[note.status]}
               </span>
             </header>
 
+            {pdfError && (
+              <p role='alert' className='mb-5 rounded-lg border border-red-900 bg-red-950/40 p-4 text-sm text-red-300'>
+                {pdfError}
+              </p>
+            )}
             <section className='mb-6 grid gap-4 sm:grid-cols-2'>
               <div className='rounded-2xl border border-slate-800 bg-slate-900 p-6'>
                 <h2 className='mb-3 text-lg font-semibold'>Pedido de origen</h2>

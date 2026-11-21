@@ -7,6 +7,7 @@ from app.api.routes.auth import router as auth_router
 from app.api.routes.business import router as business_router
 from app.api.routes.customer import router as customer_router
 from app.api.routes.delivery_note import router as delivery_note_router
+from app.api.routes.documents import router as documents_router
 from app.api.routes.invoice import router as invoice_router
 from app.api.routes.order import router as order_router
 from app.api.routes.product import router as product_router
@@ -39,6 +40,7 @@ app.include_router(product_router)
 app.include_router(customer_router)
 app.include_router(order_router)
 app.include_router(delivery_note_router)
+app.include_router(documents_router)
 app.include_router(invoice_router)
 app.include_router(subscription_router)
 
