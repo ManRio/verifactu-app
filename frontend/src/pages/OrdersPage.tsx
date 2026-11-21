@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import OrderForm from '../components/OrderForm';
@@ -367,9 +368,9 @@ function OrdersPage() {
                         className='border-b border-slate-800 last:border-0'
                       >
                         <td className='px-6 py-4'>
-                          <p className='font-medium'>
+                          <Link to={`/orders/${order.id}`} className='font-medium text-emerald-400 hover:underline'>
                             #{order.id}
-                          </p>
+                          </Link>
 
                           {order.notes && (
                             <p className='mt-1 max-w-[220px] truncate text-sm text-slate-500'>
@@ -446,6 +447,9 @@ function OrdersPage() {
 
                         <td className='px-6 py-4'>
                           <div className='flex flex-wrap items-center gap-3'>
+                            <Link to={`/orders/${order.id}`} className='font-medium text-sky-400 hover:underline'>
+                              Ver detalle
+                            </Link>
                             {order.status ===
                               'DRAFT' && (
                               <>

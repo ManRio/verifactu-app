@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
 import DeliveryNoteForm from '../components/DeliveryNoteForm';
@@ -294,7 +295,9 @@ function DeliveryNotesPage() {
                       className='border-b border-slate-800 last:border-0'
                     >
                       <td className='px-6 py-4'>
-                        <p className='font-medium'>#{deliveryNote.id}</p>
+                        <Link to={`/delivery-notes/${deliveryNote.id}`} className='font-medium text-emerald-400 hover:underline'>
+                          #{deliveryNote.id}
+                        </Link>
 
                         {deliveryNote.notes && (
                           <p className='mt-1 max-w-[220px] truncate text-sm text-slate-500'>
@@ -359,6 +362,9 @@ function DeliveryNotesPage() {
 
                       <td className='px-6 py-4'>
                         <div className='flex flex-wrap items-center gap-3'>
+                          <Link to={`/delivery-notes/${deliveryNote.id}`} className='font-medium text-sky-400 hover:underline'>
+                            Ver detalle
+                          </Link>
                           {deliveryNote.status === 'DRAFT' && (
                             <>
                               <button

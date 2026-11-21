@@ -12,7 +12,11 @@ import LoginPage from './pages/LoginPage';
 import ProductsPage from './pages/ProductsPage';
 import CustomerPage from './pages/CustomerPage';
 import OrdersPage from './pages/OrdersPage';
+import OrderDetailPage from './pages/OrderDetailPage';
 import DeliveryNotesPage from './pages/DeliveryNotesPage';
+import DeliveryNoteDetailPage from './pages/DeliveryNoteDetailPage';
+import InvoicesPage from './pages/InvoicesPage';
+import InvoiceDetailPage from './pages/InvoiceDetailPage';
 
 // Comprueba que exista un token de sesión.
 function ProtectedRoute() {
@@ -23,32 +27,6 @@ function ProtectedRoute() {
   }
 
   return <Outlet />;
-}
-
-// Pantalla informativa mientras desarrollamos Facturas.
-function InvoicesPendingPage() {
-  return (
-    <main className='min-h-screen bg-slate-950 px-6 py-12 text-white'>
-      <div className='mx-auto max-w-3xl rounded-2xl border border-slate-800 bg-slate-900 p-8'>
-        <span className='rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300'>
-          En desarrollo
-        </span>
-
-        <h1 className='mt-6 text-3xl font-bold'>Facturas</h1>
-
-        <p className='mt-4 leading-7 text-slate-400'>
-          El backend de facturación ya cuenta con funcionalidades implementadas.
-          La interfaz de usuario para gestionar facturas todavía está pendiente
-          de desarrollo.
-        </p>
-
-        <p className='mt-4 text-sm text-slate-500'>
-          Puedes continuar trabajando con productos, clientes, pedidos y
-          albaranes desde el menú.
-        </p>
-      </div>
-    </main>
-  );
 }
 
 function App() {
@@ -66,10 +44,13 @@ function App() {
             <Route path='/customers' element={<CustomerPage />} />
 
             <Route path='/orders' element={<OrdersPage />} />
+            <Route path='/orders/:orderId' element={<OrderDetailPage />} />
 
             <Route path='/delivery-notes' element={<DeliveryNotesPage />} />
+            <Route path='/delivery-notes/:deliveryNoteId' element={<DeliveryNoteDetailPage />} />
 
-            <Route path='/invoices' element={<InvoicesPendingPage />} />
+            <Route path='/invoices' element={<InvoicesPage />} />
+            <Route path='/invoices/:invoiceId' element={<InvoiceDetailPage />} />
           </Route>
         </Route>
 

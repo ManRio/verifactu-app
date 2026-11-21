@@ -13,20 +13,20 @@ El proyecto modela un flujo comercial completo, desde la creación de un pedido 
 Cliente → Pedido → Albarán → Factura → Pago
 ```
 
-Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo está completado hasta albaranes en la interfaz; facturas dispone de backend, mientras que pagos todavía está pendiente.**
+Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La gestión de pagos está pendiente.**
 
 ## Estado del desarrollo
 
-| Módulo                         | Backend | Frontend | Estado                                                                   |
-| ------------------------------ | :-----: | :------: | ------------------------------------------------------------------------ |
-| Autenticación y usuarios       |   ✅    |    🟡    | Registro y acceso vía API; pantalla de inicio de sesión                  |
-| Productos                      |   ✅    |    ✅    | Alta, edición, listado, activación/desactivación y paginación en cliente |
-| Clientes                       |   ✅    |    ✅    | Gestión integrada                                                        |
-| Pedidos                        |   ✅    |    ✅    | Borradores, confirmación, cancelación y cálculo de importes              |
-| Albaranes                      |   ✅    |    ✅    | Entregas parciales y control de cantidades                               |
-| Facturas                       |   ✅    |    ⏳    | API implementada; interfaz pendiente                                     |
-| Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                |
-| Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                         |
+| Módulo                         | Backend | Frontend | Estado                                                                        |
+| ------------------------------ | :-----: | :------: | ----------------------------------------------------------------------------- |
+| Autenticación y usuarios       |   ✅    |    🟡    | Registro y acceso vía API; pantalla de inicio de sesión                       |
+| Productos                      |   ✅    |    ✅    | Alta, edición, listado, activación/desactivación y paginación en cliente      |
+| Clientes                       |   ✅    |    ✅    | Gestión integrada                                                             |
+| Pedidos                        |   ✅    |    ✅    | Creación, edición de borradores, confirmación, cancelación y ficha de detalle |
+| Albaranes                      |   ✅    |    ✅    | Entregas parciales, control de cantidades y ficha de detalle                  |
+| Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada           |
+| Pagos                          |   ⏳    |    ⏳    | Pendiente                                                                     |
+| Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                              |
 
 **Leyenda:** ✅ implementado · 🟡 parcial · ⏳ pendiente. Los estados describen las funcionalidades presentes en el repositorio, no una certificación de preparación para producción.
 
@@ -34,10 +34,10 @@ Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, p
 
 - **Seguridad y multiempresa:** autenticación con JWT, vinculación de recursos a `business_id` y aislamiento de datos entre empresas.
 - **Productos y clientes:** creación, consulta y actualización; operaciones de activación/desactivación donde corresponda.
-- **Pedidos:** líneas con datos comerciales históricos (_snapshots_), cálculo de base imponible, impuestos y total; estados `DRAFT`, `CONFIRMED` y `CANCELLED`.
-- **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio.
-- **Facturas (backend):** borradores a partir de uno o varios albaranes confirmados del mismo cliente, snapshots de emisor, receptor y líneas, cálculo de importes, emisión y asignación de número correlativo por serie. Las facturas emitidas no se pueden editar mediante la API actual y se impide reutilizar albaranes ya facturados.
-- **Interfaz:** páginas de Productos, Clientes, Pedidos y Albaranes; navegación lateral adaptable y paginación local de productos (10 por página).
+- **Pedidos:** líneas con datos comerciales históricos (_snapshots_), cálculo de base imponible, impuestos y total; estados `DRAFT`, `CONFIRMED` y `CANCELLED`. En la interfaz pueden abrirse fichas de detalle desde el listado.
+- **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio. La ficha de detalle enlaza con el pedido de origen.
+- **Facturas:** borradores a partir de uno o varios albaranes confirmados del mismo cliente, snapshots de emisor, receptor y líneas, cálculo de importes, emisión y numeración correlativa por serie. El frontend permite crear y editar borradores, consultar su detalle y emitirlos con confirmación. Las facturas emitidas no son editables mediante la API actual y se impide reutilizar albaranes ya facturados.
+- **Interfaz:** páginas de Productos, Clientes, Pedidos, Albaranes y Facturas; fichas de detalle y enlaces entre documentos relacionados; navegación lateral adaptable y paginación local de productos (10 por página).
 - **Persistencia y calidad:** PostgreSQL, migraciones con Alembic y pruebas con Pytest en capas Repository, Service y API.
 
 ## Tecnologías
@@ -91,7 +91,7 @@ Total entregado: 10
 
 El backend impide confirmar entregas cuya suma supere la cantidad pedida. Este flujo se probó manualmente desde la interfaz durante el desarrollo.
 
-### Facturas — backend implementado
+### Facturas — backend y frontend implementados
 
 Las facturas se crean en estado `DRAFT` a partir de albaranes confirmados de un mismo cliente. Antes de la emisión pueden modificarse los campos admitidos por la API y la relación de albaranes. Al emitir, reciben fecha, serie y numeración correlativa, por ejemplo:
 
@@ -113,7 +113,19 @@ Endpoints disponibles:
 | `PATCH` | `/invoices/{invoice_id}`       | Editar borrador               |
 | `PATCH` | `/invoices/{invoice_id}/issue` | Emitir factura                |
 
-La interfaz de facturación todavía no está desarrollada.
+La interfaz permite listar y filtrar facturas por estado, crear borradores seleccionando albaranes confirmados disponibles de un mismo cliente, editar borradores, consultar el desglose económico y navegar a los albaranes asociados. La emisión es una acción separada, con confirmación explícita. Una factura emitida se consulta en modo de solo lectura.
+
+### Navegación entre documentos
+
+Las fichas de detalle pueden abrirse directamente mediante estas rutas de React Router:
+
+| Documento | Ruta                              | Contenido principal                                               |
+| --------- | --------------------------------- | ----------------------------------------------------------------- |
+| Pedido    | `/orders/:orderId`                | Cliente, líneas, importes, estado y albaranes asociados           |
+| Albarán   | `/delivery-notes/:deliveryNoteId` | Entrega, cantidades, estado y enlace al pedido                    |
+| Factura   | `/invoices/:invoiceId`            | Datos fiscales registrados, líneas, totales y albaranes asociados |
+
+Las rutas se protegen mediante la sesión de la aplicación y el backend valida la pertenencia de los recursos a la empresa autenticada. La disponibilidad de una ficha de consulta no implica permiso para modificar un documento confirmado o emitido.
 
 ## Puesta en marcha local
 
@@ -158,9 +170,9 @@ alembic upgrade head
 uvicorn app.main:app --reload
 ```
 
-- **API:** `http://127.0.0.1:8000`
-- **Documentación interactiva:** `http://127.0.0.1:8000/docs`
-- **Comprobación básica:** `http://127.0.0.1:8000/health`
+API: `http://127.0.0.1:8000`  
+Documentación interactiva: `http://127.0.0.1:8000/docs`  
+Comprobación básica: `http://127.0.0.1:8000/health`
 
 En una terminal distinta, dentro de `backend` y con el entorno virtual activado, puedes ejecutar:
 
@@ -182,7 +194,7 @@ npm install
 npm run dev
 ```
 
-Interfaz local: `http://localhost:5173`.
+Interfaz local: `http://localhost:5173`. **Mantén el mismo puerto** al iniciar Vite: actualmente FastAPI solo autoriza por CORS los orígenes `http://localhost:5173` y `http://127.0.0.1:5173`. Si Vite cambia a `5174` por tener `5173` ocupado, el inicio de sesión será bloqueado por CORS hasta que recuperes el puerto o actualices la configuración del backend.
 
 Para iniciar sesión, registra primero una empresa y su usuario mediante `POST /auth/register` en la documentación interactiva de la API. Después utiliza la página `/login`.
 
@@ -197,15 +209,21 @@ npm run build
 
 ## Pruebas y migraciones
 
-El backend cuenta con pruebas automatizadas de Repository, Service y API para los principales módulos comerciales.
+El backend cuenta con pruebas automatizadas en capas Repository, Service y API.
 
-**Última verificación local (20/11/2026):**
+**Última verificación registrada del backend (20/11/2026):**
 
-- Pytest: **371 pruebas superadas**, 1 warning conocido de compatibilidad entre Starlette TestClient y httpx.
-- Ruff: **All checks passed!**
-- Alembic: migración `36344f288a54` aplicada y sin diferencias de esquema pendientes.
+- Pytest: **371 pruebas superadas**, con 1 advertencia conocida relacionada con Starlette TestClient y `httpx`.
+- Ruff: `All checks passed!`.
+- Alembic: revisión `36344f288a54` aplicada y `alembic check` sin diferencias pendientes.
 
-La configuración de Ruff contempla el uso de `Depends()` en FastAPI y excluye del análisis habitual las migraciones históricas generadas por Alembic.
+**Última verificación registrada del frontend (21/11/2026, Fase 3):**
+
+- `npm run lint`: sin errores.
+- `npm run build`: compilación TypeScript y build de Vite 8.3.0 completados.
+- Pruebas funcionales manuales: consulta de pedidos y albaranes, enlaces entre documentos, creación y edición de borradores de factura, emisión con confirmación, visualización tras recarga e inmutabilidad de facturas emitidas. Se emitió una factura de prueba (`F-000001`) en el entorno local.
+
+> La validación manual no sustituye pruebas automatizadas de interfaz ni verifica conformidad normativa. Los resultados del backend corresponden a la ejecución del 20/11/2026 y deben repetirse antes de la entrega si se modifican sus archivos.
 
 Las migraciones se gestionan con Alembic. El último cambio de esquema registrado para facturas corresponde a la revisión `36344f288a54`; el estado efectivo de la base de datos debe comprobarse con:
 
@@ -222,10 +240,11 @@ alembic check
 - [x] API de borradores y emisión de facturas.
 - [x] Navegación lateral adaptable.
 - [x] Paginación local de productos.
-- [ ] **Interfaz de facturas:** listado, detalle, creación y edición de borradores, emisión, errores y estados.
+- [x] Fichas de detalle de pedidos, albaranes y facturas, con navegación entre documentos relacionados.
+- [x] **Interfaz de facturas:** listado, filtros, detalle, creación y edición de borradores, emisión con confirmación y estados de carga/error.
 - [ ] **Pagos:** modelo, migración, servicios, endpoints, pruebas y pantalla de cobros.
-- [ ] **Mejoras transversales:** cliente HTTP único, configuración de API por entorno, paginación/filtros compartidos, accesibilidad y validación UX.
-- [ ] **Documentos:** generación de facturas PDF y, cuando proceda, sus elementos fiscales obligatorios.
+- [ ] **Mejoras transversales:** cliente HTTP único, cierre o redirección de sesión ante respuestas `401`, configuración de API y CORS por entorno, paginación/filtros compartidos, accesibilidad y validación UX.
+- [ ] **Documentos:** generación de PDFs imprimibles de pedidos, albaranes y facturas, incorporando cuando proceda los elementos fiscales obligatorios.
 - [ ] **Integración normativa:** analizar y desarrollar los registros de facturación, encadenamiento, huellas/hash, códigos QR, formatos, comunicaciones con la AEAT, gestión de respuestas y errores, conforme a las especificaciones aplicables.
 - [ ] **Endurecimiento y entrega:** revisión de seguridad, pruebas de extremo a extremo, documentación operativa y despliegue de demostración adecuado al estado del proyecto.
 

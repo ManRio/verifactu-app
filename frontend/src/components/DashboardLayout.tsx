@@ -6,6 +6,7 @@ const navigation = [
   { label: 'Clientes', path: '/customers', icon: '♙' },
   { label: 'Pedidos', path: '/orders', icon: '▤' },
   { label: 'Albaranes', path: '/delivery-notes', icon: '⇄' },
+  { label: 'Facturas', path: '/invoices', icon: '▣' },
 ];
 
 function DashboardLayout() {
@@ -86,16 +87,6 @@ function DashboardLayout() {
               <p className='px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-slate-500'>
                 Próximamente
               </p>
-
-              <div
-                className='flex items-center justify-between rounded-xl px-4 py-3 text-sm text-slate-500'
-                title='El frontend de facturas está pendiente'
-              >
-                <span>Facturas</span>
-                <span className='rounded-full bg-slate-800 px-2 py-1 text-xs'>
-                  En desarrollo
-                </span>
-              </div>
 
               <div className='flex items-center justify-between rounded-xl px-4 py-3 text-sm text-slate-500'>
                 <span>Pagos</span>
