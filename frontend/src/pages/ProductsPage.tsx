@@ -21,6 +21,8 @@ function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hideInactive, setHideInactive] = useState(false);
 
   useEffect(() => {
     async function loadProducts() {
@@ -92,14 +94,17 @@ function ProductsPage() {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(products.length / PAGE_SIZE));
+  const query = searchQuery.trim().toLowerCase();
+  const filteredProducts = products.filter((product) => (!hideInactive || product.is_active)
+    && (!query || `${product.name} ${product.sku ?? ''}`.toLowerCase().includes(query)));
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
 
   const safePage = Math.min(currentPage, totalPages);
 
   const startIndex = (safePage - 1) * PAGE_SIZE;
   const endIndex = startIndex + PAGE_SIZE;
 
-  const visibleProducts = products.slice(startIndex, endIndex);
+  const visibleProducts = filteredProducts.slice(startIndex, endIndex);
 
   function goToPage(page: number) {
     if (page < 1 || page > totalPages) return;
@@ -162,6 +167,13 @@ function ProductsPage() {
           </section>
         )}
 
+        <section aria-label='Buscar y filtrar productos' className='mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900 p-4'>
+          <label className='flex-1 text-sm text-slate-300'>Buscar producto
+            <input type='search' value={searchQuery} onChange={(event) => {setSearchQuery(event.target.value);setCurrentPage(1);}}
+              placeholder='Nombre o SKU' className='mt-2 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white'/>
+          </label>
+          <label className='flex items-center gap-2 text-sm text-slate-300'><input type='checkbox' checked={hideInactive} onChange={(event) => {setHideInactive(event.target.checked);setCurrentPage(1);}}/> Ocultar inactivos</label>
+        </section>
         {/* Tabla */}
         {products.length > 0 && (
           <section className='overflow-hidden rounded-2xl border border-slate-800 bg-slate-900'>

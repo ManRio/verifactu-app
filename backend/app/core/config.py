@@ -31,6 +31,17 @@ class Settings(BaseSettings):
         validation_alias="JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
     )
 
+    app_environment: str = Field(default="development", validation_alias="APP_ENVIRONMENT")
+    frontend_base_url: str = Field(default="http://localhost:5173", validation_alias="FRONTEND_BASE_URL")
+    email_backend: str = Field(default="console", validation_alias="EMAIL_BACKEND")
+    smtp_host: str = Field(default="", validation_alias="SMTP_HOST")
+    smtp_port: int = Field(default=587, validation_alias="SMTP_PORT")
+    smtp_from: str = Field(default="", validation_alias="SMTP_FROM")
+    smtp_user: str = Field(default="", validation_alias="SMTP_USER")
+    smtp_password: str = Field(default="", validation_alias="SMTP_PASSWORD")
+    smtp_ssl: bool = Field(default=False, validation_alias="SMTP_SSL")
+    smtp_starttls: bool = Field(default=True, validation_alias="SMTP_STARTTLS")
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",

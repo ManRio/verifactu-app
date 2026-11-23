@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { getMe } from '../services/auth';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { endSession } from '../lib/session';
 
@@ -15,6 +16,8 @@ const navigation = [
 function DashboardLayout() {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isSuperuser, setIsSuperuser] = useState(false);
+  useEffect(() => { void getMe().then(user => setIsSuperuser(user.role === 'SUPERUSER')).catch(() => setIsSuperuser(false)); }, []);
 
   function handleLogout() {
     endSession();
@@ -66,7 +69,7 @@ function DashboardLayout() {
               Gestión
             </p>
 
-            {navigation.map((item) => (
+            {navigation.filter(item => isSuperuser || item.path !== '/subscription').map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
@@ -86,6 +89,13 @@ function DashboardLayout() {
               </NavLink>
             ))}
 
+            {isSuperuser && (
+              <div className='mt-6 border-t border-slate-800 pt-5 space-y-1'>
+                <p className='px-3 pb-2 text-xs font-semibold uppercase tracking-widest text-slate-500'>Administración</p>
+                <NavLink to='/users' onClick={() => setMenuOpen(false)} className='block rounded-xl px-4 py-3 text-sm text-slate-300 hover:bg-slate-800'>Trabajadores</NavLink>
+                <NavLink to='/accounting' onClick={() => setMenuOpen(false)} className='block rounded-xl px-4 py-3 text-sm text-slate-300 hover:bg-slate-800'>Resumen contable</NavLink>
+              </div>
+            )}
           </nav>
 
           <div className='border-t border-slate-800 p-4'>

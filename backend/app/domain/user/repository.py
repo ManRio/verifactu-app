@@ -16,12 +16,18 @@ class UserRepository:
         email: str,
         password_hash: str,
         full_name: str,
+        role: str = "WORKER",
+        email_verified: bool = True,
+        must_set_password: bool = False,
     ) -> User:
         user = User(
             business_id=business_id,
             email=email,
             password_hash=password_hash,
             full_name=full_name,
+            role=role,
+            email_verified=email_verified,
+            must_set_password=must_set_password,
         )
 
         self.db.add(user)

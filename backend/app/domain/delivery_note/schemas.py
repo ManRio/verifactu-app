@@ -10,7 +10,7 @@ class DeliveryNoteLineInput(BaseModel):
     quantity: Decimal = Field(
         gt=Decimal(0),
         max_digits=12,
-        decimal_places=3,
+        decimal_places=0,
     )
 
     position: int = Field(

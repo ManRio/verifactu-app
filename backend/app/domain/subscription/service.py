@@ -6,21 +6,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.domain.subscription.model import Subscription
+from app.domain.subscription.quotas import (
+    WORKER_CAPS,
+    active_worker_count,
+    validate_plan_change,
+)
 from app.domain.subscription.schemas import DemoPlanRead, SubscriptionRead
 
 DEMO_PLANS = {
     "STARTER": DemoPlanRead(
-        code="STARTER",
-        name="Inicio",
-        monthly_price_eur="12.90",
-        features=["Clientes y productos", "Pedidos y albaranes", "Facturas de prueba"],
+        code="STARTER", name="Inicio", monthly_price_eur="12.90", max_workers=0,
+        features=["1 superusuario", "Sin trabajadores", "Gestión comercial completa"],
     ),
     "PRO": DemoPlanRead(
-        code="PRO",
-        name="Profesional",
-        monthly_price_eur="24.90",
-        features=["Todas las funciones actuales", "Organización multiusuario (API)",
-                  "Funciones adicionales en desarrollo"],
+        code="PRO", name="Equipo", monthly_price_eur="24.90", max_workers=5,
+        features=["1 superusuario", "Hasta 5 trabajadores", "Gestión comercial completa"],
+    ),
+    "BUSINESS": DemoPlanRead(
+        code="BUSINESS", name="Empresa", monthly_price_eur="39.90", max_workers=10,
+        features=["1 superusuario", "Hasta 10 trabajadores", "Gestión comercial completa"],
     ),
 }
 
@@ -56,7 +60,12 @@ class SubscriptionService:
             subscription.status == "DEMO_ACTIVE"
             and (subscription.period_end is None or subscription.period_end <= datetime.now(UTC))
         )
+        active_workers = active_worker_count(self.db, business_id)
+        cap = WORKER_CAPS.get(subscription.plan_code or "", 0)
         return SubscriptionRead(
+            max_workers=cap,
+            active_workers=active_workers,
+            available_workers=max(0, cap - active_workers),
             status="DEMO_EXPIRED" if is_expired else subscription.status,
             plan_code=subscription.plan_code,
             plan_name=plan.name if plan else None,
@@ -69,7 +78,11 @@ class SubscriptionService:
         if plan_code not in DEMO_PLANS:
             raise InvalidDemoPlanError("Plan de demostración no válido")
 
-        subscription = self.get_model(business_id)
+        # Serializar cambios de plan e invitaciones concurrentes en la misma fila.
+        subscription = self.db.scalar(
+            select(Subscription).where(Subscription.business_id == business_id).with_for_update()
+        )
+        validate_plan_change(self.db, business_id, plan_code)
         if subscription is None:
             subscription = Subscription(business_id=business_id)
             self.db.add(subscription)

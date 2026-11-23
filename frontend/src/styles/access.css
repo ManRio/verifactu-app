@@ -1,0 +1,20 @@
+@keyframes access-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(24px, -18px, 0); }
+}
+
+@keyframes access-mode-enter {
+  from { opacity: 0; transform: translate3d(16px, 0, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+.access-glow-left { animation: access-drift 13s ease-in-out infinite; }
+.access-glow-right { animation: access-drift 17s ease-in-out infinite reverse; }
+.access-mode-enter { animation: access-mode-enter 300ms cubic-bezier(.2,.85,.3,1) both; }
+.access-switch { transition: background-color 220ms ease, color 220ms ease, box-shadow 220ms ease, transform 220ms ease; }
+.access-switch:active { transform: scale(.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  .access-glow-left, .access-glow-right, .access-mode-enter { animation: none; }
+  .access-switch { transition: none; }
+}

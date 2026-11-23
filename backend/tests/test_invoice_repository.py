@@ -946,3 +946,24 @@ def test_flush_invoice_series_changes(
 
     assert found is not None
     assert found.next_number == 2
+
+def test_replace_existing_invoice_content_without_unique_conflict(db_session: Session):
+    """Recrear la misma selección de albaranes no debe causar un 500."""
+    business, customer, _, delivery_note = create_invoice_dependencies(db_session)
+    repository = InvoiceRepository(db_session)
+    invoice = repository.create(
+        build_invoice(business, customer),
+        [build_invoice_line(delivery_note.lines[0])],
+        [build_invoice_delivery_note(delivery_note.id)],
+    )
+    changed = repository.replace_content(
+        invoice,
+        [build_invoice_line(delivery_note.lines[0])],
+        [build_invoice_delivery_note(delivery_note.id)],
+    )
+    assert changed.id == invoice.id
+    assert len(changed.lines) == 1
+    assert [link.delivery_note_id for link in changed.delivery_notes] == [delivery_note.id]
+    assert db_session.query(InvoiceDeliveryNote).filter_by(
+        delivery_note_id=delivery_note.id
+    ).count() == 1

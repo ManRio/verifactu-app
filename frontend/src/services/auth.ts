@@ -20,12 +20,31 @@ export type RegistrationRequest = {
   };
 };
 
+export type RegistrationPending = { message: string; email: string };
+
+export async function verifyEmail(token: string, password?: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/verify-email`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response, 'No se pudo activar la cuenta'));
+}
+export async function resendVerification(email: string): Promise<void> {
+  const response = await fetch(`${API_URL}/auth/resend-verification`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  if (!response.ok) throw new Error(await readApiError(response, 'No se pudo reenviar el enlace'));
+}
+
 export type AuthenticatedUser = {
   id: number;
   business_id: number;
   email: string;
   full_name: string;
   is_active: boolean;
+  role: 'SUPERUSER' | 'WORKER';
+  email_verified: boolean;
 };
 
 export async function login(credentials: LoginRequest): Promise<TokenResponse> {
@@ -40,7 +59,7 @@ export async function login(credentials: LoginRequest): Promise<TokenResponse> {
   return response.json();
 }
 
-export async function registerBusiness(data: RegistrationRequest): Promise<TokenResponse> {
+export async function registerBusiness(data: RegistrationRequest): Promise<RegistrationPending> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

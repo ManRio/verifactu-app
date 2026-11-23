@@ -1,5 +1,7 @@
+import TablePagination from '../components/TablePagination';
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { getMe } from '../services/auth';
 
 import InvoicePaymentsPanel from '../components/InvoicePaymentsPanel';
 import { getPaymentBalances } from '../services/payment';
@@ -15,12 +17,15 @@ const labels: Record<BalanceStatus, string> = {
 type Filter = 'ALL' | BalanceStatus;
 
 export default function PaymentsPage() {
+  const [isSuperuser, setIsSuperuser] = useState(false);
+  useEffect(() => { void getMe().then(user => setIsSuperuser(user.role === 'SUPERUSER')).catch(() => setIsSuperuser(false)); }, []);
   const [balances, setBalances] = useState<InvoiceBalance[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<number | null>(null);
   const [filter, setFilter] = useState<Filter>('ALL');
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
@@ -46,6 +51,9 @@ export default function PaymentsPage() {
     return matchesFilter && matchesSearch;
   }), [balances, filter, search]);
 
+  const safePage = Math.min(currentPage, Math.max(1, Math.ceil(visible.length / 10)));
+  const pageItems = visible.slice((safePage - 1) * 10, safePage * 10);
+
   const totalOutstanding = balances.reduce((sum, item) => sum + Number(item.outstanding_amount), 0);
   const totalPaid = balances.reduce((sum, item) => sum + Number(item.paid_amount), 0);
   const pendingCount = balances.filter((item) => item.payment_status !== 'PAID').length;
@@ -58,7 +66,7 @@ export default function PaymentsPage() {
           <h1 className='mt-2 text-3xl font-bold'>Cobros de facturas</h1>
           <p className='mt-2 text-slate-400'>Control manual de importes recibidos y pendientes. Los planes mensuales del SaaS son independientes.</p>
         </header>
-        <div className='mb-8 grid gap-4 sm:grid-cols-3'>
+        {isSuperuser && <div className='mb-8 grid gap-4 sm:grid-cols-3'>
           {[
             { title: 'Facturas emitidas', value: String(balances.length) },
             { title: 'Total cobrado', value: formatMoney(totalPaid.toFixed(2)) },
@@ -69,7 +77,7 @@ export default function PaymentsPage() {
               <p className='mt-3 text-2xl font-bold'>{card.value}</p>
             </div>
           ))}
-        </div>
+        </div>}
         <div className='mb-5 flex flex-wrap items-end justify-between gap-4'>
           <div>
             <h2 className='text-xl font-semibold'>Saldos por factura</h2>
@@ -77,11 +85,11 @@ export default function PaymentsPage() {
           </div>
           <div className='flex flex-wrap gap-2'>
             <label className='text-sm text-slate-300'>Buscar
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder='Factura o cliente'
+              <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder='Factura o cliente'
                 className='mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white' />
             </label>
             <label className='text-sm text-slate-300'>Estado
-              <select value={filter} onChange={(e) => setFilter(e.target.value as Filter)}
+              <select value={filter} onChange={(e) => { setFilter(e.target.value as Filter); setCurrentPage(1); }}
                 className='mt-1 block rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white'>
                 <option value='ALL'>Todos</option><option value='UNPAID'>Pendientes</option>
                 <option value='PARTIAL'>Parciales</option><option value='PAID'>Cobrados</option>
@@ -106,7 +114,7 @@ export default function PaymentsPage() {
                 <th className='px-5 py-4'>Estado</th><th className='px-5 py-4'>Acción</th>
               </tr></thead>
               <tbody className='divide-y divide-slate-800'>
-                {visible.map((item) => (
+                {pageItems.map((item) => (
                   <tr key={item.invoice_id} className={selectedInvoiceId === item.invoice_id ? 'bg-emerald-500/5' : ''}>
                     <td className='px-5 py-4'><Link to={`/invoices/${item.invoice_id}`} className='font-semibold text-emerald-300 hover:underline'>{item.full_number}</Link></td>
                     <td className='px-5 py-4 text-sm text-slate-300'>{item.customer_legal_name}</td>
@@ -123,6 +131,7 @@ export default function PaymentsPage() {
             {visible.length === 0 && <p className='p-6 text-center text-slate-400'>Sin resultados para estos filtros.</p>}
           </div>
         )}
+        {balances.length > 0 && <TablePagination currentPage={safePage} totalItems={visible.length} onPageChange={setCurrentPage} />}
         {selectedInvoiceId !== null && (
           <div className='mt-8' id='payments-detail'>
             <div className='mb-3 flex items-center justify-between'>

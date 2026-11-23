@@ -54,7 +54,7 @@ def get_current_user(
     if user is None:
         raise credentials_exception()
 
-    if not user.is_active:
+    if not user.is_active or not user.email_verified:
         raise credentials_exception()
 
     business_repository = BusinessRepository(db)

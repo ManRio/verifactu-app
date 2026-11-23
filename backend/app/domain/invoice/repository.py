@@ -86,14 +86,17 @@ class InvoiceRepository:
         lines: list[InvoiceLine],
         delivery_note_links: list[InvoiceDeliveryNote],
     ) -> Invoice:
+        # Primero borramos las asociaciones existentes dentro de la
+        # misma transacción. El flush libera las claves únicas antes
+        # de insertar nuevas filas con los mismos delivery_note_id.
+        invoice.lines.clear()
+        invoice.delivery_notes.clear()
+        self.db.flush()
+
         invoice.lines = lines
         invoice.delivery_notes = delivery_note_links
-
         self.db.flush()
-        self.db.refresh(
-            invoice
-        )
-
+        self.db.refresh(invoice)
         return invoice
 
     def get_invoice_id_for_delivery_note(

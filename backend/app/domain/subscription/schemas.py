@@ -9,6 +9,7 @@ class DemoPlanRead(BaseModel):
     name: str
     monthly_price_eur: str
     features: list[str]
+    max_workers: int = 0
 
 
 class DemoCheckoutRequest(BaseModel):
@@ -25,3 +26,6 @@ class SubscriptionRead(BaseModel):
     period_end: datetime | None
     is_demo: bool = True
     payment_collected: bool = False
+    max_workers: int = 0
+    active_workers: int = 0
+    available_workers: int = 0

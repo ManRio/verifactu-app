@@ -37,7 +37,7 @@ function OrderForm({ order = null, onSaved, onCancel }: OrderFormProps) {
       : [
           {
             product_id: '',
-            quantity: '1.000',
+            quantity: '1',
           },
         ],
   );
@@ -103,7 +103,7 @@ function OrderForm({ order = null, onSaved, onCancel }: OrderFormProps) {
       ...current,
       {
         product_id: '',
-        quantity: '1.000',
+        quantity: '1',
       },
     ]);
   }
@@ -131,7 +131,7 @@ function OrderForm({ order = null, onSaved, onCancel }: OrderFormProps) {
     if (
       lines.some(
         (line) =>
-          !line.product_id || !line.quantity || Number(line.quantity) <= 0,
+          !line.product_id || !Number.isSafeInteger(Number(line.quantity)) || Number(line.quantity) < 1,
       )
     ) {
       setError('Todas las líneas deben tener producto y una cantidad válida');
@@ -305,8 +305,8 @@ function OrderForm({ order = null, onSaved, onCancel }: OrderFormProps) {
                       <input
                         id={`order-quantity-${index}`}
                         type='number'
-                        min='0.001'
-                        step='0.001'
+                        min='1'
+                        step='1'
                         value={line.quantity}
                         onChange={(event) =>
                           handleLineChange(

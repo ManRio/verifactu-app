@@ -7,48 +7,43 @@
 
 ## Descripción
 
-El proyecto modela un flujo comercial completo, desde la creación de un pedido hasta el cobro de una factura:
+VeriFactu App es un **prototipo full stack de gestión comercial y facturación multiempresa** orientado a pequeños negocios y autónomos. Su flujo principal es:
 
 ```text
-Cliente → Pedido → Albarán → Factura → Pago
+Cliente → Pedido → Albarán → Factura emitida → Cobro manual
 ```
 
-Su objetivo es desarrollar una aplicación modular, mantenible y multiempresa, poniendo el foco en las reglas de negocio, el control de estados, la trazabilidad de operaciones y la calidad del código. **El flujo de gestión está implementado hasta la emisión de facturas de prueba, tanto en backend como en frontend. La Fase 6 añade el registro manual de cobros totales y parciales, con saldo pendiente calculado e historial de anulaciones. No procesa dinero.**
+Incluye gestión de productos y clientes; entregas parciales; facturación numerada por series; PDF A4 de prueba; cobros parciales y anulaciones auditables; acceso mediante usuarios y roles; verificación de email; suscripciones simuladas por número de trabajadores; y un panorama económico con facturación, caja, pendientes y artículos más vendidos.
 
-La Fase 4 incorpora una **entrada pública de tipo SaaS** con registro de negocio, autenticación y planes mensuales **simulados**. No procesa tarjetas, cobros ni renovaciones automáticas.
-
-La **Fase 5** añade la descarga de **PDF A4 de demostración** para pedidos, albaranes y facturas emitidas. Los archivos se generan bajo demanda desde el backend; no constituyen documentos fiscales conformes.
+**Estado a 23/11/2026: fases 1–8 de demostración implementadas y comprobadas localmente.** La integración fiscal con **VERI\*FACTU / AEAT es la siguiente línea de desarrollo**. Las suscripciones no cobran dinero; los cobros de clientes son registros manuales de pagos que supuestamente han ocurrido por otros medios.
 
 ## Estado del desarrollo
 
-| Módulo                         | Backend | Frontend | Estado                                                                                       |
-| ------------------------------ | :-----: | :------: | -------------------------------------------------------------------------------------------- |
-| Autenticación y usuarios       |   ✅    |    ✅    | Landing pública, registro de empresa, login, comprobación de sesión y redirección al caducar |
-| Productos                      |   ✅    |    ✅    | Alta, edición, listado, activación/desactivación y paginación en cliente                     |
-| Clientes                       |   ✅    |    ✅    | Gestión integrada                                                                            |
-| Pedidos                        |   ✅    |    ✅    | Creación, edición de borradores, confirmación, cancelación y ficha de detalle                |
-| Albaranes                      |   ✅    |    ✅    | Entregas parciales, control de cantidades y ficha de detalle                                 |
-| Facturas                       |   ✅    |    ✅    | Listado, filtros, borradores, edición, emisión y consulta detallada                          |
-| Suscripciones de demostración  |   ✅    |    ✅    | Planes ficticios, checkout sin tarjeta y consulta del período mensual                        |
-| Documentos PDF de demostración |   ✅    |    ✅    | Descarga autenticada de pedidos, albaranes y facturas emitidas                               |
-| Cobros de facturas (Fase 6)    |   ✅    |    ✅    | Registro manual de cobros, saldos parciales y totales, anulación auditable                   |
-| Integración fiscal VERI\*FACTU |   ⏳    |    ⏳    | Pendiente de diseño, implementación y validación                                             |
+| Módulo                                   | Backend | Frontend | Estado                                                         |
+| ---------------------------------------- | :-----: | :------: | -------------------------------------------------------------- |
+| Registro, login y verificación de correo |   ✅    |    ✅    | Acceso unificado y enlace de activación de un solo uso         |
+| Usuarios y roles por empresa             |   ✅    |    ✅    | `SUPERUSER` / `WORKER`, invitación, activación y desactivación |
+| Productos y clientes                     |   ✅    |    ✅    | Gestión, búsqueda y listados paginados                         |
+| Pedidos y albaranes                      |   ✅    |    ✅    | Borradores, confirmaciones, entregas parciales y trazabilidad  |
+| Facturas                                 |   ✅    |    ✅    | Borradores, edición, emisión, numeración y detalle             |
+| PDF A4 de demostración                   |   ✅    |    ✅    | Pedidos, albaranes y facturas emitidas                         |
+| Cobros manuales                          |   ✅    |    ✅    | Abonos parciales/totales, saldos y anulaciones auditables      |
+| Planes SaaS simulados                    |   ✅    |    ✅    | Límites de 0/5/10 trabajadores, sin pagos reales               |
+| Panorama económico                       |   ✅    |    ✅    | Indicadores mensuales, tendencia y ranking de productos        |
+| Integración fiscal VERI\*FACTU           |   ⏳    |    ⏳    | Pendiente de diseño normativo, desarrollo y validación         |
 
-**Leyenda:** ✅ implementado · 🟡 parcial · ⏳ pendiente. Los estados describen las funcionalidades presentes en el repositorio, no una certificación de preparación para producción.
+**Leyenda:** ✅ implementado en la demo · ⏳ pendiente. No implica certificación normativa ni preparación para producción.
 
-### Funcionalidades implementadas
+### Funcionalidades principales
 
-- **Seguridad y multiempresa:** autenticación con JWT, vinculación de recursos a `business_id` y aislamiento de datos entre empresas. Verificación de sesión mediante `GET /auth/me` y redirección al login cuando el token deja de ser válido.
-- **Entrada comercial:** landing pública, registro de empresa con usuario administrador, elección de plan ficticio, checkout de demostración y pantalla «Mi suscripción».
-- **Suscripciones demo:** persistencia por empresa en PostgreSQL; estado `PENDING` tras el registro y `DEMO_ACTIVE` tras el checkout; fecha de fin calculada a un mes natural. Los negocios existentes sin fila de suscripción mantienen compatibilidad. No se cobra dinero ni se gestionan tarjetas.
-- **Productos y clientes:** creación, consulta y actualización; operaciones de activación/desactivación donde corresponda.
-- **Pedidos:** líneas con datos comerciales históricos (_snapshots_), cálculo de base imponible, impuestos y total; estados `DRAFT`, `CONFIRMED` y `CANCELLED`. En la interfaz pueden abrirse fichas de detalle desde el listado.
-- **Albaranes:** creación desde pedidos confirmados, entregas parciales y control de sobreentregas. Solo las entregas confirmadas consumen cantidad; cancelar un albarán confirmado libera esa cantidad cuando lo permiten las reglas de negocio. La ficha de detalle enlaza con el pedido de origen.
-- **Facturas:** borradores a partir de uno o varios albaranes confirmados del mismo cliente, snapshots de emisor, receptor y líneas, cálculo de importes, emisión y numeración correlativa por serie. El frontend permite crear y editar borradores, consultar su detalle y emitirlos con confirmación. Las facturas emitidas no son editables mediante la API actual y se impide reutilizar albaranes ya facturados.
-- **Cobros (Fase 6):** registro de transferencias, efectivo, tarjetas ya cobradas por otro medio y otros cobros; consulta de importes abonados y pendientes; anulación de registros sin eliminación del historial. No integra TPV ni pasarela bancaria.
-- **Interfaz:** páginas de Productos, Clientes, Pedidos, Albaranes y Facturas; fichas de detalle y enlaces entre documentos relacionados; navegación lateral adaptable y paginación local de productos (10 por página).
-- **Documentos PDF (Fase 5):** generación A4 con ReportLab, varias páginas cuando es necesario, datos de empresa y cliente, líneas y totales para pedidos y facturas. Los albaranes se presentan como justificantes de entrega sin importes. La factura solo ofrece descarga después de emitirse; todos los PDF llevan una advertencia de demostración.
-- **Persistencia y calidad:** PostgreSQL, migraciones con Alembic y pruebas con Pytest en capas Repository, Service y API.
+- **Aislamiento multiempresa:** las operaciones se relacionan con el `business_id` de la sesión; el backend aplica controles de autorización.
+- **Acceso (Fases 7A–7B):** pantalla unificada y animada para login y registro, validaciones y visibilidad de contraseñas. Los nuevos usuarios deben verificar su correo antes de iniciar sesión.
+- **Roles:** el propietario es `SUPERUSER` y administra trabajadores, plan y panorama económico. Los usuarios `WORKER` realizan operaciones comerciales, pero no pueden acceder a los endpoints administrativos. Ocultar enlaces en el frontend no sustituye la autorización en FastAPI.
+- **Usuarios:** el propietario invita trabajadores por email; el destinatario activa su cuenta y define su contraseña. Las invitaciones pendientes cuentan para el límite del plan; desactivar una cuenta libera plaza.
+- **Comercial:** productos, clientes, pedidos, albaranes confirmados, facturas emitidas por serie, PDF y cobros manuales. Se mantienen los estados y snapshots históricos de documentos.
+- **Suscripciones:** los tres planes y sus límites se aplican en el backend; el checkout únicamente simula una activación mensual y no tiene pasarela de pago.
+- **Panorama económico:** consulta por mes, facturación de facturas emitidas, caja por fecha de cobro, deuda pendiente, porcentaje cobrado, tendencia y artículos más vendidos.
+- **Calidad:** PostgreSQL 17, Alembic, suite Pytest y análisis estático Ruff/ESLint/TypeScript.
 
 ## Tecnologías
 
@@ -159,42 +154,39 @@ python -m pip install -e ".[dev]"
 
 **Esta fase no necesita migración de PostgreSQL.**
 
-## Landing, sesiones y contratación simulada
+## Registro, sesiones y planes simulados
 
-### Recorrido de un nuevo negocio
+### Recorrido de un negocio nuevo
 
 ```text
-Landing pública (/) → Registro (/register) → Checkout simulado (/checkout)
-       → Panel de gestión (/products) → Mi suscripción (/subscription)
+Landing (/) → Acceder (/login: login o registro) → Verificar correo (/verify-email)
+→ Login → Seleccionar plan demo (/checkout) → Panel comercial
 ```
 
-- **Landing (`/`):** presenta características y precios ilustrativos, con acceso a registro e inicio de sesión.
-- **Registro (`/register`):** envía `POST /auth/register` y crea empresa, primer usuario y suscripción `PENDING` en la misma transacción. El usuario recibe un JWT para continuar al checkout.
-- **Login (`/login`):** utiliza `POST /auth/login`. El guard de rutas privadas comprueba localmente la expiración del JWT y consulta `GET /auth/me` para validar la sesión en el servidor.
-- **Checkout (`/checkout`):** activa uno de los planes ficticios con `POST /subscriptions/demo-checkout`, sin introducir tarjeta ni procesar pagos.
-- **Mi suscripción (`/subscription`):** consulta el plan actual, fecha de activación y fin del período mediante `GET /subscriptions/me`.
+El registro crea la empresa, el primer usuario `SUPERUSER` y una suscripción inicialmente `PENDING`, pero **no entrega un JWT utilizable hasta que el correo esté verificado y el usuario inicie sesión**. Los enlaces de verificación son de un solo uso, caducan a las 24 horas y el token se almacena como hash. Los usuarios históricos conservan acceso según la migración de Fase 7B.
 
-| Plan demo   | Código    | Precio ilustrativo | Cobro real |
-| ----------- | --------- | -----------------: | ---------- |
-| Inicio      | `STARTER` |        12,90 €/mes | **0 €**    |
-| Profesional | `PRO`     |        24,90 €/mes | **0 €**    |
+| Plan    | Código interno | Superusuarios | Trabajadores activos o invitados | Precio de demostración |
+| ------- | -------------- | ------------: | -------------------------------: | ---------------------: |
+| Inicio  | `STARTER`      |             1 |                                0 |            12,90 €/mes |
+| Equipo  | `PRO`          |             1 |                          Hasta 5 |            24,90 €/mes |
+| Empresa | `BUSINESS`     |             1 |                         Hasta 10 |            39,90 €/mes |
 
-La activación fija el siguiente vencimiento en **un mes natural**; no hay renovación automática, recibos ni pasarela de pago. Cambiar de plan o volver a activarlo reinicia el período de demostración en el estado actual del prototipo.
+Estos **precios son ficticios** y la cuota efectivamente cobrada es **0 €**. El código `PRO` se conserva por compatibilidad. Cambiar a un plan inferior se rechaza si las cuentas activas o invitadas superan su cupo; la invitación o reactivación de trabajadores también se bloquea cuando no quedan plazas. La suscripción demo dura un mes natural, sin renovación ni pago automático.
 
-### Endpoints de la Fase 4
+| Método  | Ruta                           | Uso                                              |
+| ------- | ------------------------------ | ------------------------------------------------ |
+| `POST`  | `/auth/register`               | Registrar empresa con verificación pendiente     |
+| `POST`  | `/auth/verify-email`           | Confirmar email / completar activación           |
+| `POST`  | `/auth/login`                  | Obtener JWT tras verificar la cuenta             |
+| `GET`   | `/auth/me`                     | Consultar sesión y rol                           |
+| `GET`   | `/subscriptions/plans`         | Consultar planes disponibles                     |
+| `GET`   | `/subscriptions/me`            | Consultar plan y ocupación de plazas             |
+| `POST`  | `/subscriptions/demo-checkout` | Activar/cambiar plan ficticio (superusuario)     |
+| `GET`   | `/users`                       | Listar trabajadores de la empresa (superusuario) |
+| `POST`  | `/users`                       | Invitar trabajador (superusuario)                |
+| `PATCH` | `/users/{user_id}/status`      | Activar/desactivar trabajador (superusuario)     |
 
-| Método | Ruta                           | Acceso      | Función                                                  |
-| ------ | ------------------------------ | ----------- | -------------------------------------------------------- |
-| `POST` | `/auth/register`               | Público     | Registrar negocio, administrador y suscripción pendiente |
-| `POST` | `/auth/login`                  | Público     | Obtener JWT                                              |
-| `GET`  | `/auth/me`                     | Autenticado | Validar sesión y consultar usuario                       |
-| `GET`  | `/subscriptions/plans`         | Público     | Consultar planes de demostración                         |
-| `GET`  | `/subscriptions/me`            | Autenticado | Consultar la suscripción de la empresa                   |
-| `POST` | `/subscriptions/demo-checkout` | Autenticado | Activar un plan simulado, sin cobro                      |
-
-El backend exige un plan `DEMO_ACTIVE` no caducado en las rutas que utilizan la dependencia `get_current_business_id`, devolviendo `402` si falta o ha caducado. **Este control aún no es una autorización de licencias exhaustiva:** deben revisarse las demás rutas y dependencias antes de cualquier despliegue público. Las empresas anteriores que no tengan registro de suscripción pueden seguir accediendo al panel.
-
-El frontend comparte la URL de API mediante `VITE_API_URL` y una función HTTP común que gestiona respuestas `401` y redirige al checkout ante determinadas respuestas `402`. **El JWT sigue almacenándose en `localStorage`.** Antes de producción harán falta, entre otras medidas, sesiones seguras, revocación/renovación, recuperación de contraseña, rate limiting, protección CSRF cuando corresponda y pruebas de autorización de extremo a extremo.
+**Seguridad pendiente:** el JWT se guarda actualmente en `localStorage`; faltan sesiones endurecidas, recuperación de contraseña, protección antiabuso, políticas de secretos y pruebas E2E de seguridad. Una empresa antigua sin fila de suscripción conserva una compatibilidad temporal. Los trabajadores pueden visualizar facturas y cobros individuales; aunque no tengan acceso al resumen agregado, eso no constituye confidencialidad contable estricta.
 
 ## Fase 6 — Cobros manuales de facturas
 
@@ -220,6 +212,69 @@ La migración **`c64d9f20e4a1`** incorpora la tabla `payments`. Este módulo no 
 cargos ni transferencias, no devuelve dinero y no realiza conciliación bancaria automática.
 Los cobros de facturas de clientes son independientes de las suscripciones SaaS simuladas.
 
+## Fases 7A–7B — Experiencia y permisos
+
+**Fase 7A:** interfaz de acceso unificado, validaciones y errores legibles, búsqueda y paginación en los listados, cantidades enteras para el flujo de productos y mejoras de selección de líneas en albaranes. Se corrigieron problemas de edición de borradores de factura y de relaciones entre documentos.
+
+**Fase 7B:** roles `SUPERUSER` y `WORKER`, invitaciones, activación y verificación de email y protección de rutas administrativas en el backend. La migración `f7b20c81a611` asigna el rol `SUPERUSER` al primer usuario existente de cada empresa y `WORKER` a los demás, conservando las cuentas antiguas como verificadas. En empresas con varios usuarios históricos se deben revisar los roles asignados.
+
+### Configuración de correo en desarrollo
+
+Edita el `.env` de la **raíz del proyecto**:
+
+```dotenv
+APP_ENVIRONMENT=development
+FRONTEND_BASE_URL=http://localhost:5173
+EMAIL_BACKEND=console
+```
+
+En este modo, la URL de activación se imprime en la consola de Uvicorn, **sin enviar un correo real**. No compartas tokens, enlaces ni trazas de activación.
+
+Para correo real puede configurarse `EMAIL_BACKEND=smtp` y las variables `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_STARTTLS` y `SMTP_SSL`; los secretos deben permanecer fuera de Git. En producción, el backend `console` no está permitido. Todavía faltan colas de entrega/outbox, observabilidad y controles antiabuso para un despliegue real.
+
+## Fase 8 — Plazas por plan y panorama económico
+
+El superusuario gestiona la capacidad de trabajadores desde `/users` y consulta el panel en `/accounting`, alimentado por `GET /reports/summary?month=AAAA-MM`. El backend comprueba las plazas durante la invitación, reactivación y cambio de plan; los roles se validan igualmente en la API.
+
+| Indicador                   | Definición                                                                             |
+| --------------------------- | -------------------------------------------------------------------------------------- |
+| Facturado del mes           | Total con IVA de facturas `ISSUED` cuya `issue_date` pertenece al mes                  |
+| Caja del mes                | Total de cobros `RECORDED` cuya `payment_date` pertenece al mes                        |
+| Cobrado de facturas del mes | Cobros vigentes imputados a las facturas emitidas en el mes, aunque se cobren después  |
+| Pendiente del mes           | Saldo actual de las facturas emitidas ese mes                                          |
+| Pendiente total             | Saldo de todas las facturas emitidas que siguen sin liquidarse                         |
+| Desviación de flujo         | Facturado del mes menos caja del mes; **no equivale a deuda pendiente**                |
+| Productos más vendidos      | Unidades de las líneas de facturas emitidas ese mes, sin duplicar pedidos ni albaranes |
+| Evolución                   | Comparación mensual de facturación y cobros durante seis meses                         |
+
+No es un libro mayor, contabilidad oficial, conciliación bancaria ni un módulo fiscal. Todos los cobros se introducen manualmente.
+
+## Datos sintéticos de demostración — NovaGest 2026
+
+El script opcional `demo_novagest_2026/seed.py` permite preparar un entorno **local de desarrollo** para una tienda ficticia de recambios de automóvil. Solo actúa si existen dos cuentas de prueba, verificadas y activas, dentro de la misma empresa NovaGest. No crea usuarios, ni altera roles, contraseñas o suscripciones.
+
+| Recurso                                   | Volumen del lote |
+| ----------------------------------------- | ---------------: |
+| Referencias de producto                   |              100 |
+| Clientes                                  |               48 |
+| Pedidos / albaranes                       |        292 / 260 |
+| Facturas (emitidas / totales)             |        217 / 234 |
+| Movimientos de cobro (incluidos anulados) |              242 |
+
+Los datos cubren **enero a 23 de noviembre de 2026** e incluyen cobros completos, parciales y deuda pendiente para mostrar gráficos realistas. La serie `D26` y los SKU con prefijo `DEM26-` distinguen el lote de los datos anteriores. Son registros ficticios, no facturas fiscales reales ni operaciones comunicadas a la AEAT.
+
+Si incluyes este script opcional en tu copia del repositorio, la guía detallada está en `demo_novagest_2026/LEEME.md`. Su uso recomendado desde la raíz es:
+
+```powershell
+python .\demo_novagest_2026\seed.py --preview
+python .\demo_novagest_2026\seed.py --dry-run
+# Solo tras confirmar la base local y tener copia de seguridad:
+python .\demo_novagest_2026\seed.py --apply --confirm NOVAGEST_DEMO_2026
+python .\demo_novagest_2026\seed.py --verify
+```
+
+El script restringe conexiones a PostgreSQL local y `APP_ENVIRONMENT=development`, comprueba la empresa destino y evita la carga duplicada. Inserta en una sola transacción. Su ejecución en la base local **no forma parte de las 407 pruebas de Pytest** y debe verificarse por separado.
+
 ## Puesta en marcha local
 
 ### Requisitos
@@ -238,7 +293,7 @@ cd verifactu-app
 Copy-Item .env.example .env
 ```
 
-Edita el archivo **`.env` en la raíz del repositorio**. Si utilizas el `docker-compose.yml` incluido, configura `POSTGRES_PASSWORD=verifactu_dev`, porque ese es el valor utilizado por el contenedor de desarrollo. Ajusta también `JWT_SECRET_KEY` con un secreto local propio, robusto y no compartido.
+Edita el archivo **`.env` en la raíz del repositorio** y configura las variables de correo de desarrollo indicadas en Fase 7B. Si utilizas el `docker-compose.yml` incluido, configura `POSTGRES_PASSWORD=verifactu_dev`, porque ese es el valor utilizado por el contenedor de desarrollo. Ajusta también `JWT_SECRET_KEY` con un secreto local propio, robusto y no compartido.
 
 > El contenedor incluye credenciales **solo para desarrollo local**. No reutilices esta configuración en producción ni subas `.env` al repositorio.
 
@@ -289,7 +344,7 @@ npm run dev
 
 Interfaz local: `http://localhost:5173`. Vite está configurado con `strictPort: true`: si el puerto está ocupado, se detiene en vez de pasar silenciosamente a `5174`. FastAPI permite en desarrollo los orígenes `localhost`/`127.0.0.1` en los puertos `5173` y `5174`.
 
-Abre la landing en `/`, crea una empresa desde `/register`, completa el plan ficticio en `/checkout` y entra en el panel. Los negocios anteriores a la Fase 4 conservan su acceso. **Mantén Uvicorn ejecutándose en otra terminal**: `pytest` no deja el servidor iniciado.
+Abre la landing en `/`, utiliza **Acceder** para abrir el login/registro unificados en `/login`, verifica el email con la URL mostrada por Uvicorn, inicia sesión y activa un plan ficticio desde `/checkout`. Los negocios anteriores a la Fase 4 conservan su acceso. **Mantén Uvicorn ejecutándose en otra terminal**: `pytest` no deja el servidor iniciado.
 
 Para usar otra URL de API, copia `frontend/.env.example` a `frontend/.env` y ajusta `VITE_API_URL`. No incluyas secretos en variables `VITE_*`, ya que forman parte del código entregado al navegador.
 
@@ -304,64 +359,56 @@ npm run build
 
 ## Pruebas y migraciones
 
-El backend cuenta con pruebas automatizadas en capas Repository, Service y API.
+**Última verificación comunicada: 23/11/2026, después de la Fase 8 y sus correcciones.**
 
-**Última verificación registrada del backend (21/11/2026, Fase 4):**
+| Comprobación                | Resultado                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------- |
+| Pytest, backend             | **407 passed, 1 warning**                                                         |
+| Ruff, backend               | `All checks passed!`                                                              |
+| Alembic                     | `f7b20c81a611 (head)`; `No new upgrade operations detected`                       |
+| ESLint, frontend            | Sin errores                                                                       |
+| TypeScript y Vite, frontend | `npm run build` correcto                                                          |
+| Pruebas manuales            | Flujos de usuarios, permisos, planes y panorama económico revisados en desarrollo |
 
-- Pytest: **380 pruebas superadas**, con 1 warning conocido de compatibilidad entre Starlette TestClient y `httpx`.
-- Ruff: `All checks passed!` tras ordenar las importaciones.
-- Alembic: migración `b8f43c12ad90` (`add demo subscriptions`) aplicada y `alembic check` sin operaciones nuevas.
-- La prueba de la dependencia de empresa se actualizó para proporcionar una sesión de SQLAlchemy simulada; se añadieron comprobaciones de suscripción pendiente y activa.
+El único aviso de Pytest procede de una deprecación en la combinación Starlette TestClient / `httpx`. Las verificaciones manuales son indicativas; faltan una suite E2E completa, auditoría de seguridad y cualquier validación normativa.
 
-**Última verificación registrada del frontend (21/11/2026, Fase 4):**
+**Revisiones relevantes de Alembic:** `36344f288a54` (facturación), `b8f43c12ad90` (suscripciones demo), `c64d9f20e4a1` (cobros) y `f7b20c81a611` (roles y verificación de correo). La Fase 8 no añade migración.
 
-- `npm run lint`: sin errores.
-- `npm run build`: compilación TypeScript y build de Vite 8.3.0 completados.
-- Fase 3: consulta de pedidos y albaranes, enlaces entre documentos, borradores y emisión de facturas de prueba; se emitió `F-000001` en local.
-- Fase 4: comprobaciones manuales satisfactorias de landing, registro, checkout simulado, acceso al panel, «Mi suscripción», cierre y reinicio de sesión, compatibilidad del usuario anterior y redirección de sesión caducada.
-
-**Validación funcional manual de Fase 5 (21/11/2026):** seis comprobaciones satisfactorias de descarga y contenido de PDF para pedidos, albaranes y facturas emitidas, incluida la restricción de borradores. La fase incorporó pruebas automatizadas adicionales de PDF, autenticación y autorización.
-
-**Última ejecución comunicada del backend (21/11/2026, Fase 6):**
-
-- Pytest: **396 pruebas superadas**, con 1 advertencia conocida de Starlette TestClient y `httpx`.
-- Alembic: migración `c64d9f20e4a1` (`add invoice payments`) aplicada; `alembic current` muestra esa revisión como `head` y `alembic check` indica `No new upgrade operations detected`.
-- Ruff: la primera ejecución detectó dos ajustes automáticos (`I001` y `PLR1730`) en el módulo de pagos. **Pendiente de confirmar el resultado de la nueva ejecución de `ruff check .` después de `ruff check . --fix`.**
-- Frontend Fase 6: **pendiente de adjuntar las salidas finales** de `npm run lint` y `npm run build` tras esta integración.
-- Pruebas manuales: **6 comprobaciones funcionales realizadas satisfactoriamente**, que incluyen cobro parcial, cobro total, rechazo del exceso de cobro y anulación conservando el historial.
-
-> Las comprobaciones manuales no sustituyen las pruebas automatizadas E2E, una auditoría de seguridad ni la verificación normativa. Las 396 pruebas corresponden a la ejecución del backend tras integrar la Fase 6; las verificaciones finales de Ruff y del frontend se deben completar antes del commit.
-
-Las migraciones se gestionan con Alembic: `36344f288a54` introduce la facturación, `b8f43c12ad90` añade `subscriptions` y `c64d9f20e4a1` incorpora `payments`. El esquema efectivo se comprueba con:
+Ejecuta desde `backend` y con PostgreSQL local activo:
 
 ```powershell
+ruff check .
+pytest -q
 alembic current
-alembic heads
 alembic check
 ```
 
+Y desde `frontend`:
+
+```powershell
+npm run lint
+npm run build
+```
+
+**Nunca ejecutes los tests de integración contra una base de datos de producción.**
+
 ## Hoja de ruta
 
-- [x] Autenticación y aislamiento multiempresa en el backend.
-- [x] Gestión de productos, clientes, pedidos y albaranes en backend y frontend.
-- [x] API de borradores y emisión de facturas.
-- [x] Navegación lateral adaptable.
-- [x] Paginación local de productos.
-- [x] Fichas de detalle de pedidos, albaranes y facturas, con navegación entre documentos relacionados.
-- [x] **Interfaz de facturas:** listado, filtros, detalle, creación y edición de borradores, emisión con confirmación y estados de carga/error.
-- [x] **Fase 4 — experiencia SaaS demo:** landing, registro, checkout ficticio, pantalla de suscripción, validación de sesión y migración de suscripciones.
-- [x] **Calidad de Fase 4:** 380 pruebas backend, lint y build frontend, y validación funcional manual.
-- [x] **Fase 5 — PDF de demostración:** generación y descarga protegida de pedidos, albaranes y facturas emitidas.
-- [x] **Fase 6 — Cobros:** modelo, migración, registro de cobros manuales, control de saldos, historial de anulaciones, endpoints y pantalla de gestión.
-- [ ] **Cobros futuros:** importación de extractos, conciliación bancaria, devoluciones reales y documentación de recibos.
-- [ ] **Mejoras transversales:** revisar autorización por suscripción en todas las rutas; sesiones con cookies seguras y renovación/revocación; recuperación de contraseña; controles de abuso; paginación, accesibilidad y pruebas E2E.
-- [ ] **Documentación fiscal:** adaptación de los documentos, QR y elementos normativos que resulten exigibles antes del uso real.
-- [ ] **Integración normativa:** analizar y desarrollar los registros de facturación, encadenamiento, huellas/hash, códigos QR, formatos, comunicaciones con la AEAT, gestión de respuestas y errores, conforme a las especificaciones aplicables.
-- [ ] **Endurecimiento y entrega:** revisión de seguridad, pruebas de extremo a extremo, documentación operativa y despliegue de demostración adecuado al estado del proyecto.
+- [x] **Fases 1–3:** arquitectura multiempresa, productos y clientes, pedidos, albaranes, facturas y frontend de gestión.
+- [x] **Fase 4:** landing y suscripciones de demostración.
+- [x] **Fase 5:** PDF A4 de prueba para documentos comerciales.
+- [x] **Fase 6:** cobros manuales, saldos y auditoría de anulaciones.
+- [x] **Fase 7A:** UX, acceso unificado, filtros y mejoras de formularios.
+- [x] **Fase 7B:** roles, permisos administrativos y verificación de correo.
+- [x] **Fase 8:** límites por plan y panorama económico mensual.
+- [x] **Calidad técnica:** 407 tests superados; Ruff, Alembic, lint y build correctos (23/11/2026).
+- [ ] **Siguiente fase: integración fiscal VERI\*FACTU.** Analizar requisitos técnicos vigentes y especificaciones oficiales de la AEAT; diseñar registros de facturación, encadenamiento, huellas, QR, comunicación, gestión de respuestas, errores y trazabilidad, con pruebas y revisión legal/técnica.
+- [ ] **Seguridad para producción:** SMTP transaccional robusto, protección frente a abuso, sesiones y cookies seguras, recuperación de contraseña, permisos granulares, auditoría, pruebas E2E y revisión de despliegue.
+- [ ] **Operativa financiera avanzada:** conciliación bancaria, importación de movimientos y, si se decide implementarlos, cobros electrónicos reales.
 
 ## Alcance y uso previsto
 
-El propósito actual es **educativo y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. La contratación SaaS es una simulación sin pagos; los cobros de facturas son anotaciones manuales de importes supuestamente recibidos por otros medios, no transacciones procesadas ni verificadas por esta aplicación. No se presenta como ERP completo, servicio de facturación listo para producción ni solución conforme a VERI\*FACTU.
+El propósito actual es **educativo, de demostración y de portfolio profesional**. Se utiliza para demostrar diseño de APIs, modelado de datos, arquitectura por capas, reglas de negocio, pruebas y desarrollo frontend. La contratación SaaS es una simulación sin pagos; los cobros de facturas son anotaciones manuales de importes supuestamente recibidos por otros medios, no transacciones procesadas ni verificadas por esta aplicación. No se presenta como ERP completo, servicio listo para producción ni sistema conforme a VERI\*FACTU. La integración fiscal sigue pendiente.
 
 ## Autoría
 

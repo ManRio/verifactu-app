@@ -22,7 +22,8 @@ def make_user() -> User:
 
 def make_db(subscription: Subscription | None) -> Session:
     db = Mock(spec=Session)
-    db.scalar.return_value = subscription
+    # Consulta 1: suscripcion; consulta 2: trabajadores activos.
+    db.scalar.side_effect = [subscription, 0]
     return db
 
 

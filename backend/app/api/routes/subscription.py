@@ -3,7 +3,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.auth import get_current_user
+from app.api.dependencies.roles import get_current_superuser
 from app.db.session import get_db
+from app.domain.subscription.quotas import WorkerQuotaError
 from app.domain.subscription.schemas import (
     DemoCheckoutRequest,
     DemoPlanRead,
@@ -35,11 +37,13 @@ def get_subscription(
 @router.post("/demo-checkout", response_model=SubscriptionRead)
 def demo_checkout(
     payload: DemoCheckoutRequest,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> SubscriptionRead:
     try:
         return SubscriptionService(db).demo_checkout(current_user.business_id, payload.plan_code)
+    except WorkerQuotaError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except InvalidDemoPlanError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

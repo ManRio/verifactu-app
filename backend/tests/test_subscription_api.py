@@ -23,15 +23,25 @@ def make_registration():
 
 
 def register(client):
-    response = client.post("/auth/register", json=make_registration())
+    from unittest.mock import patch
+    payload = make_registration()
+    with patch("app.domain.auth.service.send_activation_email") as sent:
+        response = client.post("/auth/register", json=payload)
     assert response.status_code == 201
-    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+    token = sent.call_args.args[2]
+    verified = client.post("/auth/verify-email", json={"token": token})
+    assert verified.status_code == 200
+    logged = client.post("/auth/login", json={
+        "email": payload["user"]["email"], "password": payload["user"]["password"]
+    })
+    assert logged.status_code == 200
+    return {"Authorization": f"Bearer {logged.json()['access_token']}"}
 
 
 def test_demo_plans_are_public(client):
     response = client.get("/subscriptions/plans")
     assert response.status_code == 200
-    assert {plan["code"] for plan in response.json()} == {"STARTER", "PRO"}
+    assert {plan["code"] for plan in response.json()} == {"STARTER", "PRO", "BUSINESS"}
 
 
 def test_signup_creates_pending_subscription(client):

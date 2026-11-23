@@ -7,7 +7,7 @@ import type { DemoPlan } from '../types/subscription';
 export default function CheckoutPage() {
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const selected = params.get('plan') === 'PRO' ? 'PRO' : 'STARTER';
+  const selected = params.get('plan') === 'PRO' || params.get('plan') === 'BUSINESS' ? params.get('plan') : 'STARTER';
   const [plans, setPlans] = useState<DemoPlan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -43,9 +43,10 @@ export default function CheckoutPage() {
 
       {error && <p role='alert' className='mt-6 rounded-xl border border-red-800 bg-red-950/40 p-4 text-sm text-red-200'>{error}</p>}
       {loadingPlans && <p className='mt-8 text-slate-400'>Consultando planes...</p>}
-      {!loadingPlans && <div className='mt-9 grid gap-5 md:grid-cols-2'>
+      {!loadingPlans && <div className='mt-9 grid gap-5 md:grid-cols-3'>
         {plans.map(item => <button type='button' key={item.code} aria-pressed={selected===item.code} onClick={() => setParams({plan:item.code})} className={`rounded-2xl border p-6 text-left transition ${selected===item.code ? 'border-emerald-400 bg-emerald-400/10':'border-slate-700 bg-slate-900 hover:border-slate-500'}`}>
           <div className='flex justify-between'><h2 className='text-xl font-bold'>{item.name}</h2><span className='text-emerald-300'>{selected===item.code?'● Seleccionado':'○ Elegir'}</span></div>
+          <p className='mt-4 text-sm font-semibold text-emerald-300'>{item.max_workers === 0 ? '1 superusuario · sin trabajadores' : `1 superusuario + ${item.max_workers} trabajadores`}</p>
           <p className='mt-6 text-3xl font-bold'>{Number(item.monthly_price_eur).toLocaleString('es-ES',{style:'currency',currency:'EUR'})}<span className='ml-2 text-sm font-normal text-slate-400'>/ mes (ficticio)</span></p>
           <ul className='mt-6 space-y-3 text-sm text-slate-300'>{item.features.map(feature=><li key={feature}>✓ {feature}</li>)}</ul>
         </button>)}

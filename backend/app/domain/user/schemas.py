@@ -18,10 +18,9 @@ class UserCreate(BaseModel):
 
 class UserApiCreate(BaseModel):
     email: EmailStr
-    password: str = Field(
-        min_length=8,
-        max_length=128,
-    )
+    # Compatibilidad con clientes previos; se ignora al invitar trabajadores.
+    # El invitado establece su propia contraseña desde el correo.
+    password: str | None = Field(default=None, min_length=8, max_length=128)
     full_name: str = Field(
         min_length=1,
         max_length=150,
@@ -48,6 +47,8 @@ class UserUpdate(BaseModel):
 class UserRead(BaseModel):
     id: int
     business_id: int
+    role: str
+    email_verified: bool
     email: EmailStr
     full_name: str
     is_active: bool
@@ -57,3 +58,8 @@ class UserRead(BaseModel):
     model_config = ConfigDict(
         from_attributes=True,
     )
+
+class WorkerStatusUpdate(BaseModel):
+    is_active: bool
+
+    model_config = ConfigDict(extra="forbid")

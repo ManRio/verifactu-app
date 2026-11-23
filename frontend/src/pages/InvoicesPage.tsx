@@ -1,3 +1,4 @@
+import TablePagination from '../components/TablePagination';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
@@ -14,6 +15,8 @@ function InvoicesPage() {
   const [loadStatus, setLoadStatus] = useState<LoadStatus>('loading');
   const [error, setError] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
@@ -68,9 +71,13 @@ function InvoicesPage() {
 
   const draftCount = invoices.filter((invoice) => invoice.status === 'DRAFT').length;
   const issuedCount = invoices.filter((invoice) => invoice.status === 'ISSUED').length;
+  const query = searchQuery.trim().toLowerCase();
   const visibleInvoices = invoices
-    .filter((invoice) => statusFilter === 'ALL' || invoice.status === statusFilter)
+    .filter((invoice) => (statusFilter === 'ALL' || invoice.status === statusFilter)
+      && (!query || `${invoice.full_number ?? invoice.id} ${invoice.customer_legal_name} ${invoice.customer_tax_id ?? ''}`.toLowerCase().includes(query)))
     .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  const safePage = Math.min(currentPage, Math.max(1, Math.ceil(visibleInvoices.length / 10)));
+  const pageInvoices = visibleInvoices.slice((safePage - 1) * 10, safePage * 10);
 
   return (
     <main className='min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-6 lg:px-8'>
@@ -112,13 +119,17 @@ function InvoicesPage() {
             <p className='mt-1 text-sm text-slate-400'>{visibleInvoices.length} facturas en el listado</p>
           </div>
           <div className='flex flex-wrap items-center gap-3'>
+            <label className='text-sm text-slate-400'>Buscar
+              <input type='search' value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }}
+                placeholder='Factura, cliente o CIF' className='ml-2 rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-white' />
+            </label>
             <button type='button' onClick={refresh}
               className='rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:border-slate-500'>
               Actualizar
             </button>
             <label htmlFor='invoice-status-filter' className='text-sm text-slate-400'>Estado</label>
             <select id='invoice-status-filter' value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+              onChange={(event) => { setStatusFilter(event.target.value as StatusFilter); setCurrentPage(1); }}
               className='rounded-lg border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-white'>
               <option value='ALL'>Todas</option>
               <option value='DRAFT'>Borradores</option>
@@ -164,7 +175,7 @@ function InvoicesPage() {
                   </tr>
                 </thead>
                 <tbody className='divide-y divide-slate-800'>
-                  {visibleInvoices.map((invoice) => (
+                  {pageInvoices.map((invoice) => (
                     <tr key={invoice.id} className='hover:bg-slate-800/40'>
                       <td className='px-6 py-5 font-semibold'>
                         <Link to={`/invoices/${invoice.id}`} className='text-emerald-400 hover:underline'>
@@ -200,6 +211,7 @@ function InvoicesPage() {
             </div>
           </section>
         )}
+      {loadStatus === 'ready' && invoices.length > 0 && <TablePagination currentPage={safePage} totalItems={visibleInvoices.length} onPageChange={setCurrentPage} />}
       </div>
     </main>
   );

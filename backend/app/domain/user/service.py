@@ -32,6 +32,10 @@ class InactiveUserError(Exception):
     pass
 
 
+class UnverifiedUserError(Exception):
+    pass
+
+
 class UserService:
     def __init__(self, db: Session):
         self.db = db
@@ -43,6 +47,9 @@ class UserService:
         data: UserCreate,
         *,
         commit: bool = True,
+        role: str | None = None,
+        email_verified: bool = True,
+        must_set_password: bool = False,
     ) -> User:
         business = self.business_repository.get_by_id(
             data.business_id
@@ -65,6 +72,13 @@ class UserService:
         if existing_user is not None:
             raise UserAlreadyExistsError
 
+        # Primer usuario del negocio: propietario; siguientes: trabajadores.
+        # La API de invitaciones fuerza siempre WORKER, aunque el cliente pida otro rol.
+        if role is None:
+            role = "WORKER" if self.repository.list_by_business_id(data.business_id) else "SUPERUSER"
+        if role not in {"SUPERUSER", "WORKER"}:
+            raise ValueError("Rol no admitido")
+
         user = self.repository.create(
             business_id=data.business_id,
             email=normalized_email,
@@ -72,6 +86,9 @@ class UserService:
                 data.password
             ),
             full_name=data.full_name,
+            role=role,
+            email_verified=email_verified,
+            must_set_password=must_set_password,
         )
 
         if commit:
@@ -208,6 +225,8 @@ class UserService:
 
         if not user.is_active:
             raise InactiveUserError
+        if not user.email_verified:
+            raise UnverifiedUserError
 
         business = self.business_repository.get_by_id(
             user.business_id

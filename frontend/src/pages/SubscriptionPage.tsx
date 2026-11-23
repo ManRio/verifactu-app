@@ -33,6 +33,7 @@ export default function SubscriptionPage() {
           <div><dt className='text-sm text-slate-400'>Precio de ejemplo</dt><dd className='mt-1 font-semibold'>{subscription.monthly_price_eur ? Number(subscription.monthly_price_eur).toLocaleString('es-ES',{style:'currency',currency:'EUR'}) : '—'} / mes</dd></div>
           <div><dt className='text-sm text-slate-400'>Inicio del período</dt><dd className='mt-1 font-semibold'>{date(subscription.activated_at)}</dd></div>
           <div><dt className='text-sm text-slate-400'>Fin del período ilustrativo</dt><dd className='mt-1 font-semibold'>{date(subscription.period_end)}</dd></div>
+          <div><dt className='text-sm text-slate-400'>Trabajadores activos o invitados</dt><dd className='mt-1 font-semibold'>{subscription.active_workers} de {subscription.max_workers} · {subscription.available_workers} plazas libres</dd></div>
           <div><dt className='text-sm text-slate-400'>Pagos reales procesados</dt><dd className='mt-1 font-semibold text-emerald-300'>Ninguno</dd></div>
         </dl>}
         <Link to='/checkout' className='mt-8 inline-block rounded-xl bg-emerald-400 px-5 py-3 font-semibold text-slate-950 hover:bg-emerald-300'>{subscription?.status==='DEMO_ACTIVE'?'Cambiar plan demo':'Activar plan demo'}</Link>

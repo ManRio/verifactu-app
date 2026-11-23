@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies.authorization import ensure_same_business
+from app.api.dependencies.roles import get_current_superuser
 from app.api.dependencies.tenant import get_current_business_id
 from app.db.session import get_db
 from app.domain.business.model import Business
@@ -13,6 +14,7 @@ from app.domain.business.service import (
     BusinessAlreadyExistsError,
     BusinessService,
 )
+from app.domain.user.model import User
 
 router = APIRouter(
     prefix="/businesses",
@@ -85,6 +87,7 @@ def update_business(
     current_business_id: int = Depends(
         get_current_business_id,
     ),
+    owner: User = Depends(get_current_superuser),
     db: Session = Depends(get_db),
 ) -> Business:
     ensure_same_business(

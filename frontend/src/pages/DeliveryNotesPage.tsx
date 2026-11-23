@@ -1,3 +1,4 @@
+import TablePagination from '../components/TablePagination';
 import { Link } from 'react-router-dom';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -24,6 +25,9 @@ function DeliveryNotesPage() {
   const [actionDeliveryNoteId, setActionDeliveryNoteId] = useState<
     number | null
   >(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [hideInactive, setHideInactive] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     async function loadData() {
@@ -207,6 +211,14 @@ function DeliveryNotesPage() {
     }
   }
 
+  const query = searchQuery.trim().toLowerCase();
+  const filteredNotes = deliveryNotes.filter((note) => {
+    const text = `${note.id} ${note.order_id} ${note.notes ?? ''} ${note.lines.map((line) => line.description).join(' ')}`.toLowerCase();
+    return (!hideInactive || note.status !== 'CANCELLED') && (!query || text.includes(query));
+  }).sort((a, b) => b.id - a.id);
+  const safePage = Math.min(currentPage, Math.max(1, Math.ceil(filteredNotes.length / 10)));
+  const visibleNotes = filteredNotes.slice((safePage - 1) * 10, safePage * 10);
+
   return (
     <main className='min-h-screen bg-slate-950 px-6 py-10 text-white'>
       <div className='mx-auto max-w-7xl'>
@@ -259,6 +271,13 @@ function DeliveryNotesPage() {
           </section>
         )}
 
+        <section aria-label='Buscar y filtrar registros' className='mb-5 flex flex-wrap items-center gap-4 rounded-xl border border-slate-800 bg-slate-900 p-4'>
+          <label className='flex-1 text-sm text-slate-200'>Buscar
+            <input type='search' value={searchQuery} onChange={(event) => { setSearchQuery(event.target.value); setCurrentPage(1); }} placeholder='albarán, pedido o producto'
+              className='mt-2 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white' />
+          </label>
+          <label className='flex items-center gap-2 text-sm text-slate-300'><input type='checkbox' checked={hideInactive} onChange={(event) => { setHideInactive(event.target.checked); setCurrentPage(1); }} /> Ocultar cancelados</label>
+        </section>
         {deliveryNotes.length > 0 && (
           <div className='overflow-x-auto rounded-2xl border border-slate-800 bg-slate-900'>
             <table className='w-full min-w-[1050px]'>
@@ -281,7 +300,7 @@ function DeliveryNotesPage() {
               </thead>
 
               <tbody>
-                {deliveryNotes.map((deliveryNote) => {
+                {visibleNotes.map((deliveryNote) => {
                   const isActionPending =
                     actionDeliveryNoteId === deliveryNote.id;
 
@@ -421,6 +440,7 @@ function DeliveryNotesPage() {
             </table>
           </div>
         )}
+      {deliveryNotes.length > 0 && <TablePagination currentPage={safePage} totalItems={filteredNotes.length} onPageChange={setCurrentPage} />}
       </div>
     </main>
   );

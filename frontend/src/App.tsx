@@ -1,5 +1,9 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 
+import SuperuserGate from './components/SuperuserGate';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import UsersPage from './pages/UsersPage';
+import AccountingSummaryPage from './pages/AccountingSummaryPage';
 import DashboardLayout from './components/DashboardLayout';
 import SessionGuard from './components/SessionGuard';
 import SubscriptionGate from './components/SubscriptionGate';
@@ -25,6 +29,7 @@ function App() {
         <Route path='/' element={<LandingPage />} />
         <Route path='/login' element={<LoginPage />} />
         <Route path='/register' element={<RegisterPage />} />
+        <Route path='/verify-email' element={<VerifyEmailPage />} />
 
         <Route element={<SessionGuard />}>
           <Route path='/checkout' element={<CheckoutPage />} />
@@ -40,6 +45,10 @@ function App() {
               <Route path='/invoices' element={<InvoicesPage />} />
               <Route path='/invoices/:invoiceId' element={<InvoiceDetailPage />} />
               <Route path='/payments' element={<PaymentsPage />} />
+              <Route element={<SuperuserGate />}>
+                <Route path='/users' element={<UsersPage />} />
+                <Route path='/accounting' element={<AccountingSummaryPage />} />
+              </Route>
             </Route>
           </Route>
         </Route>

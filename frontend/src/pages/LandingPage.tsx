@@ -8,8 +8,9 @@ const features = [
 ];
 
 const plans = [
-  { code: 'STARTER', name: 'Inicio', price: '12,90', subtitle: 'Para comenzar a organizar tu negocio.', features: ['Productos y clientes', 'Pedidos y albaranes', 'Facturas de prueba'] },
-  { code: 'PRO', name: 'Profesional', price: '24,90', subtitle: 'Para un flujo de trabajo más completo.', features: ['Todas las funciones actuales', 'Gestión multiusuario mediante API', 'Novedades en desarrollo'] },
+  { code: 'STARTER', name: 'Inicio', price: '12,90', subtitle: 'Para gestionar tu negocio por tu cuenta.', features: ['1 superusuario', '0 trabajadores', 'Todos los módulos comerciales'] },
+  { code: 'PRO', name: 'Equipo', price: '24,90', subtitle: 'Para pequeños equipos.', features: ['1 superusuario', 'Hasta 5 trabajadores', 'Todos los módulos comerciales'] },
+  { code: 'BUSINESS', name: 'Empresa', price: '39,90', subtitle: 'Para equipos en crecimiento.', features: ['1 superusuario', 'Hasta 10 trabajadores', 'Todos los módulos comerciales'] },
 ] as const;
 
 export default function LandingPage() {
@@ -26,10 +27,9 @@ export default function LandingPage() {
             <a href='#preguntas' className='hover:text-white'>Preguntas</a>
           </nav>
           <div className='flex items-center gap-2 sm:gap-4'>
-            <Link to={hasSession ? '/products' : '/login'} className='rounded-lg px-3 py-2 text-sm font-medium text-slate-200 hover:text-emerald-300'>
-              {hasSession ? 'Ir al panel' : 'Iniciar sesión'}
+            <Link to={hasSession ? '/products' : '/login'} className='rounded-xl bg-emerald-400 px-5 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-300'>
+              {hasSession ? 'Ir al panel' : 'Acceder'}
             </Link>
-            <Link to='/register' className='rounded-xl bg-emerald-400 px-4 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-500/10 transition hover:bg-emerald-300'>Crear cuenta</Link>
           </div>
         </div>
       </header>
@@ -87,7 +87,7 @@ export default function LandingPage() {
             <p className='text-center text-sm font-bold uppercase tracking-[0.2em] text-emerald-400'>Planes de demostración</p>
             <h2 className='mt-3 text-center text-3xl font-bold sm:text-4xl'>Un precio claro. Por ahora, ficticio.</h2>
             <p className='mx-auto mt-4 max-w-xl text-center text-slate-400'>Elige tu plan para recorrer la experiencia de contratación. No se realizará ningún pago ni renovación automática.</p>
-            <div className='mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-2'>
+            <div className='mx-auto mt-12 grid max-w-4xl gap-6 md:grid-cols-3'>
               {plans.map((plan,index)=><article key={plan.code} className={`rounded-2xl border p-8 ${index===1?'border-emerald-500/60 bg-emerald-400/5':'border-slate-700 bg-slate-900'}`}>
                 {index===1 && <span className='mb-5 inline-block rounded-full bg-emerald-400 px-3 py-1 text-xs font-bold text-slate-950'>Plan destacado</span>}
                 <h3 className='text-2xl font-bold'>{plan.name}</h3><p className='mt-2 text-sm text-slate-400'>{plan.subtitle}</p>

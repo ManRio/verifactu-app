@@ -128,8 +128,16 @@ function InvoiceForm({ invoice = null, onSaved, onCancel }: InvoiceFormProps) {
         operation_date: operationDate || null,
         notes: notes.trim() || null,
       };
+      // Si solo cambian las notas/fecha, NO recreamos relaciones ya existentes.
+      const originalIds = invoice?.delivery_notes.map((item) => item.delivery_note_id) ?? [];
+      const selectionChanged = originalIds.length !== selectedIds.length
+        || originalIds.some((id) => !selectedIds.includes(id));
       const saved = invoice
-        ? await updateInvoice(invoice.id, payload)
+        ? await updateInvoice(invoice.id, {
+            notes: payload.notes,
+            operation_date: payload.operation_date,
+            ...(selectionChanged ? { delivery_note_ids: selectedIds } : {}),
+          })
         : await createInvoice(payload);
       onSaved(saved);
     } catch (err) {

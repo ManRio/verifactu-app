@@ -1,8 +1,9 @@
 export type DemoPlan = {
-  code: 'STARTER' | 'PRO';
+  code: 'STARTER' | 'PRO' | 'BUSINESS';
   name: string;
   monthly_price_eur: string;
   features: string[];
+  max_workers: number;
 };
 
 export type DemoSubscription = {
@@ -14,4 +15,7 @@ export type DemoSubscription = {
   period_end: string | null;
   is_demo: true;
   payment_collected: false;
+  max_workers: number;
+  active_workers: number;
+  available_workers: number;
 };

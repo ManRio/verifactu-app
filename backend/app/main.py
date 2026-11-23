@@ -12,6 +12,7 @@ from app.api.routes.invoice import router as invoice_router
 from app.api.routes.order import router as order_router
 from app.api.routes.payment import router as payment_router
 from app.api.routes.product import router as product_router
+from app.api.routes.report import router as report_router
 from app.api.routes.subscription import router as subscription_router
 from app.api.routes.user import router as user_router
 from app.db.session import get_db
@@ -38,6 +39,7 @@ app.include_router(auth_router)
 app.include_router(business_router)
 app.include_router(user_router)
 app.include_router(payment_router)
+app.include_router(report_router)
 app.include_router(product_router)
 app.include_router(customer_router)
 app.include_router(order_router)
